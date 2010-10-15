@@ -7,6 +7,7 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		$this->args = array(
 			'page_title' => __('Picasa Albums Option', $this->textdomain),
 			'menu_title' => __('Picasa Albums', $this->textdomain),
+			'parent string'=>'edit.php'
 		);
 	}
 
@@ -29,6 +30,23 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		 html('h3', __('Picasa Settings', $this->textdomain))
 		.html('p', __('', $this->textdomain))
 		.$this->table($rows);
+		//.html('p', __('<input type="button" class="button" value="Import Now" id="import_albums" name="import_albums">&nbsp;<span class="loader hide"><i>Loading...</i></span>', $this->textdomain));
+		
+		$rows = array(
+			array(
+				'title' => __('Import Albums', $this->textdomain),
+				'type' => 'button',
+				'name' => 'import_albums',
+				'id'=>'import_albums',
+				'value'=>'Import',
+				'extra'=>'class="button"',
+				'desc' => '<span class="loader hide"><i>Loading...</i></span>',
+			),
+		);
+		$out.=html('h3', __('Import Data', $this->textdomain));
+		$out.=html('p', __('', $this->textdomain));
+		
+		$out.=$this->table($rows);
 	/*
 		$rows = array(
 			array(

@@ -12,7 +12,7 @@ $j(document).ready(function(){
 		var l = $j(this);
 		var t = $j(this).val();
 		l.val('Loading...');
-		$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_reload_images',{"id":l.attr("data")},function(){
+		$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_reload_images',{"id":l.attr("data"),'post_ID':$j("#post_ID").val()},function(){
 			l.val(t);
 		});
 	});

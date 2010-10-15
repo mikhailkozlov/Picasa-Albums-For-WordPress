@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Los_Angeles');
 /**
  * @package MyPicasaPluginOnline
  */
@@ -22,6 +23,7 @@ require $path .'/scb/load.php';
 scb_init(array('wpPicasa','init'));
 
 class wpPicasa{
+	static $post_type='album';
 	static $options=array(
 				'v'=>'1.0',
 				'key'=>'picasaOptions_options',
@@ -154,8 +156,24 @@ class wpPicasa{
 	}
 	function picasa_admin_album_images(){
 		global $post;
-		$post->post_content =  json_decode(htmlspecialchars_decode($post->post_content),true);
-		echo 'images';
+		if(!is_array($post->post_content)){
+			$post->post_content =  json_decode(htmlspecialchars_decode($post->post_content),true);
+		}
+		echo '<div class="inside">';
+		if(count($post->post_content) > 0){
+			foreach($post->post_content as $i=>$image){
+				echo '<a class="thickbox" href="'.$image['fullpath'].'s720/'.$image['file'].'"><img src="'.$image['fullpath'].'s110-c/'.$image['file'].'" alt="'.$image['summary'].'" /></a>';
+			}
+		}
+		echo '
+				<div class="clear"></div>
+			</div>
+		<div class="clear"></div>';
+		/*
+		echo '<pre>';
+		print_r($post->post_content);
+		echo '</pre>';
+		*/
 	}
 	
 	/**
@@ -163,54 +181,86 @@ class wpPicasa{
 	 * @return unknown_type
 	 */
 	function picasa_ajax_import() {
-		global $seodb, $wpdb;
+		global $wpdb;
 		$options = get_option(self::$options['key']);
 		// /wp-admin/admin-ajax.php?action=myajax-submit
 		echo 'ajax...';
 		// time to curl
-		/*
 		$xml= new wpPicasaApi($options['username']);
 		$xml->getAlbums();
 		$xml->parseAlbumXml(true);
-		foreach($xml->getData() as $aData){
-			
-			self::insertAlbums($aData);
+		$q = 'SELECT ID, post_parent FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' ';
+		foreach($wpdb->get_results($q, ARRAY_A) as $i=>$row){
+			$albums[$row['post_parent']] =$row['ID'];
 		}
-		*/		
+		foreach($xml->getData() as $aData){
+			if(array_key_exists($aData['id'],$albums)){
+				self::insertAlbums($aData,$albums[$aData['id']]);
+			}else{
+				self::insertAlbums($aData);
+			}
+		}
 		exit;
 	}
+	/**
+	 * loads images from api
+	 * @return bool
+	 */
 	function picasa_ajax_reload_images() {
 		global $seodb, $wpdb;
+		if(isset($_GET['post_ID']) && isset($_GET['id'])){
 		$options = get_option(self::$options['key']);
-		echo 'ajax...';
-		// time to curl
-		/*
-		$xml= new wpPicasaApi($options['username']);
-		$xml->getAlbums();
-		$xml->parseAlbumXml(true);
-		foreach($xml->getData() as $aData){
-			
-			self::insertAlbums($aData);
+			// time to curl
+			$xml= new wpPicasaApi($options['username']);
+			$xml->getImages($_REQUEST['id']);
+			$xml->parseImageXml(true);
+			self::insertImagesToAlbum($xml->getData(),$_GET['post_ID']);
+			echo '{"r":1,"m":"done!"}';
+		}else{
+			echo '{"r":0,"m":"plese provide post and album id"}';
 		}
-		*/		
 		exit;
 	}
-	function insertAlbums($data){
+	function insertAlbums($data,$id=0){
 		global $current_user;
       	get_currentuserinfo();
-      	
 		$post = array(
 			'post_status' => 'draft', 
 			'post_type' => 'album',
 			'post_title' => $data['title'],
 			'post_name' => $data['name'],
+			'post_parent'=>$data['id'],
 			'post_date_gmt' => date('Y-m-d H:i:s',$data['published']),
 			'post_modified_gmt' => date('Y-m-d H:i:s',$data['updated']),
 			'post_author' => $current_user->ID,
 			'post_excerpt' => json_encode($data)
 		);
-		print_r($post);
-		#$id=wp_insert_post($post);		
+		if(intval($id) > 0){
+			$post['ID'] = $id;
+			wp_update_post($post);
+			return $id;
+		}
+		$date = new DateTime(date('Y-m-d H:i:s',$data['published']),new DateTimeZone('Europe/London'));
+		$date->setTimezone(new DateTimeZone(date('e')));
+		$post['post_date'] = $date->format('Y-m-d H:i:s');
+		$date = new DateTime(date('Y-m-d H:i:s',$data['updated']),new DateTimeZone('Europe/London'));
+		$date->setTimezone(new DateTimeZone(date('e')));
+		$post['post_modified'] = $date->format('Y-m-d H:i:s');
+		
+		$id=wp_insert_post($post);
+		return $id; 		
+	}
+	function insertImagesToAlbum($data,$id=0){
+		global $current_user;
+      	get_currentuserinfo();
+		$post = array(
+			'post_content' => json_encode($data)
+		);
+		if(intval($id) > 0){
+			$post['ID'] = $id;
+			$id=wp_update_post($post);
+		}
+		return $id;
 	}
 	
 }
@@ -272,7 +322,7 @@ class wpPicasaApi{
 						'name'=>(string)$oAlbum->author->name, // Mikhail Kozlov
 						'uri'=>(string)$oAlbum->author->uri //http://picasaweb.google.com/kozlov.m.a
 					), // will keep this on record in case we decide to go with more than one album
-					'id'=> (string)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
+					'id'=> (Array)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
 					'name'=>'',//20100902RussiaOddThings
 					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
 					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
@@ -298,8 +348,10 @@ class wpPicasaApi{
 				$aAlbum['thumbnail'] = $aAlbum['thumbnail']['@attributes']; 
 				$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
 				$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
+				$aAlbum['id'] = (string)$aAlbum['id'][0];
 				$tmp = explode('/',$aAlbum['links']['text/html']);
 				$aAlbum['name']=end($tmp);
+				
 				unset($tmp);
 				$this->data[$aAlbum['name']]=$aAlbum;
 				unset($aAlbum);				
@@ -342,24 +394,20 @@ class wpPicasaApi{
 		$xml->registerXPathNamespace('gphoto', 'http://schemas.google.com/photos/2007'); // define namespace media
 		$xml->registerXPathNamespace('georss', 'http://www.georss.org/georss'); // define namespace media
 		$xml->registerXPathNamespace('gml', 'http://www.opengis.net/gml'); // define namespace media
-
-		#print_r($xml);
 		if(count($xml->entry) > 0){
 			foreach($xml->entry as $i=>$oAlbum){
 				$aAlbum = array(
-					'author'=>array(
-						'name'=>(string)$oAlbum->author->name, // Mikhail Kozlov
-						'uri'=>(string)$oAlbum->author->uri //http://picasaweb.google.com/kozlov.m.a
-					), // will keep this on record in case we decide to go with more than one album
-					'id'=> (string)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
-					'name'=>'',//20100902RussiaOddThings
+					'id'=> (Array)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
 					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
 					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
-					'title' =>(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
-					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
+					'file' =>(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
+					'fullpath' =>$oAlbum->content,//2010-09-02 - Russia - Odd Things
+				   	'width'=>(Array)$oAlbum->xpath('./gphoto:width'), // width of the original in px
+				    'height'=>(Array)$oAlbum->xpath('./gphoto:height'), // height of the original in px 
+				    'size'=>(Array)$oAlbum->xpath('./gphoto:size'), // file size of the original in kb				
 					'latlong' => (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'), //
 					'summary' =>(string) $oAlbum->summary, //Some things in Russia make you wonder
-					'rights' => (string)$oAlbum->rights, //public
+					'rights' => (Array)$oAlbum->xpath('./gphoto:access'), //public
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings
 						'application/atom+xml'=>'' //http://picasaweb.google.com/data/feed/api/user/kozlov.m.a/albumid/5516889074505060529
@@ -373,14 +421,22 @@ class wpPicasaApi{
 					}
 				}
 				unset($oLink);
-				$aAlbum['thumbnail'] = (Array)$aAlbum['thumbnail'][0];
-				$aAlbum['thumbnail'] = $aAlbum['thumbnail']['@attributes']; 
+				$tmp = explode('/',$aAlbum['thumbnail']['url']);
+				// some trickery to get image path
+				$aAlbum['fullpath'] = (Array)$aAlbum['fullpath'];
+				$aAlbum['fullpath'] =str_replace($aAlbum['file'],'',$aAlbum['fullpath']['@attributes']['src']);
+				// flatten id
+				$aAlbum['id'] = (string)$aAlbum['id'][0];
+				// lat long as array
 				$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
 				$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
-				$tmp = explode('/',$aAlbum['links']['text/html']);
-				$aAlbum['name']=end($tmp);
+				// flatten right, size, width, height
+				$aAlbum['size'] = (string)$aAlbum['size'][0];
+				$aAlbum['rights'] = (string)$aAlbum['rights'][0];
+				$aAlbum['height'] = (string)$aAlbum['height'][0];
+				$aAlbum['width'] = (string)$aAlbum['width'][0];
 				unset($tmp);
-				$this->data[$aAlbum['name']]=$aAlbum;
+				$this->data[]=$aAlbum;
 				unset($aAlbum);				
 			}
 			unset($oAlbum);

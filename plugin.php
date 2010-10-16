@@ -43,6 +43,7 @@ class wpPicasa{
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
+			add_action( "publish_post", array('wpPicasa','publish_post'));
 		}
 		self::load_picasa_javascript();
 				
@@ -80,7 +81,21 @@ class wpPicasa{
 			'parent_item_colon' => ''
 		);
 		$supports = array('title','author','comments');
-		register_post_type( 'album',array('rewrite' =>true,'labels' => $labels,'public' => true,'supports' => $supports));
+		$args = array(
+			'rewrite' =>true,
+			'labels' => $labels,
+			'public' => true,
+			'show_ui' => true,
+			'query_var' => true,
+			'capability_type' => 'page',
+			'hierarchical' => false,
+			'publicly_queryable' => true,
+			'menu_position'=>20,
+			'_builtin'=>true,
+			'supports' => $supports
+		);
+		register_post_type( 'album',$args);
+		register_taxonomy_for_object_type('album', 'album');
 		// add custom box
 				
 	}
@@ -121,10 +136,12 @@ class wpPicasa{
 	 */
 	function picasa_admin_album_view(){
 		global $post;
+
 		if(!is_array($post->post_excerpt)){
 			$post->post_excerpt =  json_decode(htmlspecialchars_decode($post->post_excerpt),true);
 		}
 		if(is_array($post->post_excerpt)){
+		echo '<textarea id="excerpt" name="excerpt" style="display:none">'.json_encode($post->post_excerpt).'</textarea>';
 		echo '
 		<div class="inside">
 			<img src="'.$post->post_excerpt['thumbnail']['url'].'" alt="album cover" width="'.$post->post_excerpt['thumbnail']['width'].'" height="'.$post->post_excerpt['thumbnail']['height'].'" style="float:left; margin-right:5px;"/>
@@ -154,26 +171,36 @@ class wpPicasa{
 			echo 'Error! Album data is corrupted!';
 		}
 	}
+	/**
+	 * displays edit page
+	 * @return unknown_type
+	 */
 	function picasa_admin_album_images(){
 		global $post;
 		if(!is_array($post->post_content)){
 			$post->post_content =  json_decode(htmlspecialchars_decode($post->post_content),true);
 		}
+		/*
+		echo '<pre>';
+		print_r($post->post_content[1]);
+		echo '</pre>';
+		*/
+		echo '<textarea id="content" name="content" style="display:none">'.json_encode($post->post_content).'</textarea>';
 		echo '<div class="inside">';
 		if(count($post->post_content) > 0){
 			foreach($post->post_content as $i=>$image){
-				echo '<a class="thickbox" href="'.$image['fullpath'].'s720/'.$image['file'].'"><img src="'.$image['fullpath'].'s110-c/'.$image['file'].'" alt="'.$image['summary'].'" /></a>';
+				echo '<a class="thickbox" href="'.$image['fullpath'].'s720/'.$image['file'].'" title="';
+				echo (!empty($image['summary'])) ? htmlspecialchars($image['summary']):$image['file'];
+				echo '"><img src="'.$image['fullpath'].'s110-c/'.$image['file'].'" alt="'.$image['summary'].'" /></a>';
 			}
+		}else{
+			echo 'No images!';
+			print_r($post->post_content);
 		}
 		echo '
 				<div class="clear"></div>
 			</div>
 		<div class="clear"></div>';
-		/*
-		echo '<pre>';
-		print_r($post->post_content);
-		echo '</pre>';
-		*/
 	}
 	
 	/**
@@ -329,7 +356,7 @@ class wpPicasaApi{
 					'title' =>(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
 					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
 					'latlong' => (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'), //
-					'summary' =>(string) $oAlbum->summary, //Some things in Russia make you wonder
+					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
 					'rights' => (string)$oAlbum->rights, //public
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings
@@ -394,8 +421,11 @@ class wpPicasaApi{
 		$xml->registerXPathNamespace('gphoto', 'http://schemas.google.com/photos/2007'); // define namespace media
 		$xml->registerXPathNamespace('georss', 'http://www.georss.org/georss'); // define namespace media
 		$xml->registerXPathNamespace('gml', 'http://www.opengis.net/gml'); // define namespace media
+		$xml->registerXPathNamespace('exif', 'http://schemas.google.com/photos/exif/2007'); // define namespace media
 		if(count($xml->entry) > 0){
+			$c=0;
 			foreach($xml->entry as $i=>$oAlbum){
+				$c++;
 				$aAlbum = array(
 					'id'=> (Array)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
 					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
@@ -406,8 +436,10 @@ class wpPicasaApi{
 				    'height'=>(Array)$oAlbum->xpath('./gphoto:height'), // height of the original in px 
 				    'size'=>(Array)$oAlbum->xpath('./gphoto:size'), // file size of the original in kb				
 					'latlong' => (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'), //
-					'summary' =>(string) $oAlbum->summary, //Some things in Russia make you wonder
+					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
 					'rights' => (Array)$oAlbum->xpath('./gphoto:access'), //public
+					'pos'=>$c,
+					'show'=>'yes',
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings
 						'application/atom+xml'=>'' //http://picasaweb.google.com/data/feed/api/user/kozlov.m.a/albumid/5516889074505060529

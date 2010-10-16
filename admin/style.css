@@ -1,11 +1,16 @@
 .hide{
 	display:none;
 }
-#picasa-album-images img{
-	border:1px solid #EDEDED; 
+#picasa-album-images a{
+	background:transparent none;
+	border:1px solid #EDEDED;
 	display:block;
 	float:left;
 	margin:3px;
-	
 	padding:2px;
+	position:relative;
 }
+#picasa-album-images a:hover{
+	background-color:#ccc;
+}
+

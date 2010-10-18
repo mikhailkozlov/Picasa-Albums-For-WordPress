@@ -27,7 +27,15 @@ class wpPicasa{
 	static $options=array(
 				'v'=>'1.0',
 				'key'=>'picasaOptions_options',
-				'username' => ''
+				'username' => '',
+				'album_thumbsize'=>288,
+				'album_thumbcrop'=>true, 
+				'image_thumbsize'=>128, // 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
+				'image_thumbcrop'=>true, // true/false
+				'image_maxsize'=>800, // lint to original
+				'image_class'=>'picasa_image',
+				'use_lightbox'=>true,
+				
 	);
 	function init($options=array()) {
 		global $picasaOptions;
@@ -43,7 +51,7 @@ class wpPicasa{
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
-			add_action( "publish_post", array('wpPicasa','publish_post'));
+			#add_action( "publish_post", array('wpPicasa','publish_post'));
 		}
 		self::load_picasa_javascript();
 				
@@ -58,6 +66,10 @@ class wpPicasa{
 			wp_enqueue_script('picasa_albums_admin', plugins_url('picasa'). '/admin/scripts.js', array('jquery'), '1.0', true);
 			wp_enqueue_style('picasa_albums_admin_css',plugins_url('picasa').'/admin/style.css');
 		}else{
+			wp_enqueue_style('picasa_albums_css',plugins_url('picasa').'/style.css');
+			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');
+			wp_enqueue_script('fancybox', plugins_url('picasa') . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
+			
 			wp_enqueue_script('picasa_albums', plugins_url('picasa') . '/scripts.js', array('jquery'), '1.1', true);
 		}	
 	}
@@ -82,7 +94,7 @@ class wpPicasa{
 		);
 		$supports = array('title','author','comments');
 		$args = array(
-			'rewrite' =>true,
+			'rewrite' =>array('slug'=>'album'),
 			'labels' => $labels,
 			'public' => true,
 			'show_ui' => true,
@@ -91,13 +103,17 @@ class wpPicasa{
 			'hierarchical' => false,
 			'publicly_queryable' => true,
 			'menu_position'=>20,
-			'_builtin'=>true,
 			'supports' => $supports
 		);
 		register_post_type( 'album',$args);
 		register_taxonomy_for_object_type('album', 'album');
+		
+		add_filter('the_content',array('wpPicasa','picasa_album_filter'));
+		
 		// add custom box
-				
+		#is_tax('album')
+		#query_posts(array('post_type' => array('post','page','album')));
+		#print_r(get_post_types( ));
 	}
 	function add_custom_boxes(){
 		add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),'album', 'normal', 'high');
@@ -221,7 +237,7 @@ class wpPicasa{
 			$albums[$row['post_parent']] =$row['ID'];
 		}
 		foreach($xml->getData() as $aData){
-			if(array_key_exists($aData['id'],$albums)){
+			if(is_array($albums) && array_key_exists($aData['id'],$albums)){
 				self::insertAlbums($aData,$albums[$aData['id']]);
 			}else{
 				self::insertAlbums($aData);
@@ -229,6 +245,7 @@ class wpPicasa{
 		}
 		exit;
 	}
+	
 	/**
 	 * loads images from api
 	 * @return bool
@@ -288,6 +305,65 @@ class wpPicasa{
 			$id=wp_update_post($post);
 		}
 		return $id;
+	}
+	// Adding a new rule
+	function wp_insertPicasaRules($rules){
+		$newrules = array();
+		$newrules['(album)/(\d*)$'] = 'index.php?post_type=$matches[1]&post_name=$matches[2]';
+		$newrules['(album)$'] = 'index.php?post_type=$matches[1]';
+		return $newrules + $rules;
+	}
+	
+	// Adding the id var so that WP recognizes it
+	function wp_insertPicasaQueryVars($vars){
+	    array_push($vars, 'post_name');
+	    return $vars;
+	}
+	
+	function picasa_album_filter($content){
+		global $post;
+		if(get_post_type() == self::$post_type){
+			if(is_single()){
+				self::decode_content(&$post->post_content);
+				$res = '';
+				foreach($post->post_content as $i=>$aImage){
+					$res .= '
+							<div style="width: '.(self::$options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.self::$options['image_class'].'">
+								<a href="'.$aImage['fullpath'].'s'.self::$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
+					$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+					$res.='">
+									<img src="'.$aImage['fullpath'].'s'.self::$options['image_thumbsize'];
+					$res.=(self::$options['image_thumbcrop']) ? '-c':'';
+					$res.='/'.$aImage['file'].'" width="'.self::$options['image_thumbsize'].'" class="size-medium" title="'.$aImage['file'].'" alt="" />
+								</a>
+								<p class="wp-caption-text" style="display:none">'.$post->post_excerpt['title'].'</p>
+							</div>
+					'; 
+				}
+				return $res;			
+			}else{
+				self::decode_content(&$post->post_excerpt);
+				$res = '
+					<div>
+						<div style="width: '.($post->post_excerpt['thumbnail']['width']+10).'px;" class="wp-caption alignleft">
+							<a href="'.get_permalink().'">
+								<img height="'.$post->post_excerpt['thumbnail']['height'].'" width="'.$post->post_excerpt['thumbnail']['width'].'" class="size-medium" title="'.$post->post_excerpt['title'].'" alt="" src="'.$post->post_excerpt['thumbnail']['url'].'" />
+							</a>
+							<p class="wp-caption-text" style="display:none">'.$post->post_excerpt['title'].'</p>
+						</div>
+						'.$post->post_excerpt['summary'].'
+					</div>
+				'; 
+				return $res;			
+			}
+		}else{
+			return $content;
+		}		 
+	}
+	function decode_content(&$c){
+		if(!is_array($c)){
+			$c =  json_decode(htmlspecialchars_decode($c),true);
+		}
 	}
 	
 }
@@ -479,5 +555,18 @@ class wpPicasaApi{
 		}
 	}
 }
+
 // new post type has to added at init. else rewrite does not work
 add_action('init',array('wpPicasa','create_postType'));
+
+add_filter('rewrite_rules_array',array('wpPicasa','wp_insertPicasaRules'));
+add_filter('query_vars',array('wpPicasa','wp_insertPicasaQueryVars'));
+add_filter('init','flushRules');
+
+if(!function_exists(flushRules)){
+	// Remember to flush_rules() when adding rules
+	function flushRules(){
+		global $wp_rewrite;
+	   	$wp_rewrite->flush_rules();
+	}
+}

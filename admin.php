@@ -22,10 +22,9 @@ class picasaOptions_Options_Page extends scbAdminPage {
 				'type' => 'text',
 				'name' => 'username',
 				'extra' => 'size="50"',
-				'desc' => '<br />Picasa\'s API does not need password to access your RSS feed.',
+				'desc' => '<br />Picasa\'s API does not need password to access your public RSS feed.',
 			),
 		);
-	
 		$out =
 		 html('h3', __('Picasa Settings', $this->textdomain))
 		.html('p', __('', $this->textdomain))
@@ -47,6 +46,60 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		$out.=html('p', __('', $this->textdomain));
 		
 		$out.=$this->table($rows);
+		/*
+ 				'username' => '',
+				'album_thumbsize'=>288,
+				'album_thumbcrop'=>true, 
+				'image_thumbsize'=>128, // 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
+				'image_thumbcrop'=>true, // true/false
+				'image_maxsize'=>800, // lint to original
+				'image_class'=>'picasa_image',
+				'use_lightbox'=>true,
+
+		 */
+		$rows = array(
+			array(
+				'title' => __('Album Thumbnail Size', $this->textdomain),
+				'type' => 'text',
+				'name' => 'album_thumbsize',
+				'extra'=>'class="small-text"',
+				'desc' => '<span>px. </span>'
+			),
+			array(
+				'title' => __('Crop Album Thumbnails', $this->textdomain),
+				'type' => 'select',
+				'value'=>array(1=>'Yes',0=>'No'),
+				'name' => 'image_thumbcrop',
+				'desc' => '<span></span>'
+			),
+			array(
+				'title' => __('Image Thumbnail Size', $this->textdomain),
+				'type' => 'text',
+				'name' => 'image_thumbsize',
+				'extra'=>'class="small-text"',
+				'desc' => '<span>px. </span>'
+			),
+			array(
+				'title' => __('Image Max Size', $this->textdomain),
+				'type' => 'text',
+				'name' => 'image_maxsize',
+				'extra'=>'class="small-text"',
+				'desc' => '<span>px. The max. size of the image users will see in lightbox.</span>'
+			),
+			array(
+				'title' => __('Crop Thumbnails', $this->textdomain),
+				'type' => 'select',
+				'value'=>array(1=>'Yes',0=>'No'),
+				'name' => 'image_thumbcrop',
+				'desc' => '<span></span>'
+			)
+			
+		);
+		$out.=html('h3', __('Album Page Settings', $this->textdomain));
+		$out.=html('p', __('', $this->textdomain));
+		
+		$out.=$this->table($rows);
+		
 	/*
 		$rows = array(
 			array(

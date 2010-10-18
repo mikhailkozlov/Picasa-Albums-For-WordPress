@@ -39,12 +39,8 @@ class wpPicasa{
 	);
 	function init($options=array()) {
 		global $picasaOptions;
-		
 		$options=self::$options;
-		$options = new scbOptions($options['key'], __FILE__,array(
-				'v'=>'1.0',
-				'username' => ''
-		));
+		$options = new scbOptions($options['key'], __FILE__,self::$options);
 		if ( is_admin() ) {
 			require_once dirname(__FILE__) . '/admin.php';
 			new picasaOptions_Options_Page(__FILE__, $options);
@@ -232,15 +228,15 @@ class wpPicasa{
 		$xml= new wpPicasaApi($options['username']);
 		$xml->getAlbums();
 		$xml->parseAlbumXml(true);
-		$q = 'SELECT ID, post_parent FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' ';
+		$q = 'SELECT ID, post_mime_type FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' ';
 		foreach($wpdb->get_results($q, ARRAY_A) as $i=>$row){
-			$albums[$row['post_parent']] =$row['ID'];
+			$albums[$row['post_mime_type']] =$row['ID'];
 		}
 		foreach($xml->getData() as $aData){
 			if(is_array($albums) && array_key_exists($aData['id'],$albums)){
 				self::insertAlbums($aData,$albums[$aData['id']]);
 			}else{
-				self::insertAlbums($aData);
+				self::insertAlbums($aData,0);
 			}
 		}
 		exit;
@@ -261,7 +257,7 @@ class wpPicasa{
 			self::insertImagesToAlbum($xml->getData(),$_GET['post_ID']);
 			echo '{"r":1,"m":"done!"}';
 		}else{
-			echo '{"r":0,"m":"plese provide post and album id"}';
+			echo '{"r":0,"m":"please provide post and album id"}';
 		}
 		exit;
 	}
@@ -273,7 +269,7 @@ class wpPicasa{
 			'post_type' => 'album',
 			'post_title' => $data['title'],
 			'post_name' => $data['name'],
-			'post_parent'=>$data['id'],
+			'post_mime_type'=>$data['id'],
 			'post_date_gmt' => date('Y-m-d H:i:s',$data['published']),
 			'post_modified_gmt' => date('Y-m-d H:i:s',$data['updated']),
 			'post_author' => $current_user->ID,
@@ -290,7 +286,6 @@ class wpPicasa{
 		$date = new DateTime(date('Y-m-d H:i:s',$data['updated']),new DateTimeZone('Europe/London'));
 		$date->setTimezone(new DateTimeZone(date('e')));
 		$post['post_modified'] = $date->format('Y-m-d H:i:s');
-		
 		$id=wp_insert_post($post);
 		return $id; 		
 	}
@@ -319,22 +314,31 @@ class wpPicasa{
 	    array_push($vars, 'post_name');
 	    return $vars;
 	}
-	
+	/**
+	 * 
+	 * 
+	 * 
+	 * @param $content
+	 * @return html
+	 */
 	function picasa_album_filter($content){
 		global $post;
+		$options=self::$options;
+		$options = array_merge($options,get_option($options['key']));
+		print_r($options);
 		if(get_post_type() == self::$post_type){
 			if(is_single()){
 				self::decode_content(&$post->post_content);
 				$res = '';
 				foreach($post->post_content as $i=>$aImage){
 					$res .= '
-							<div style="width: '.(self::$options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.self::$options['image_class'].'">
-								<a href="'.$aImage['fullpath'].'s'.self::$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
+							<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
+								<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
 					$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
 					$res.='">
-									<img src="'.$aImage['fullpath'].'s'.self::$options['image_thumbsize'];
-					$res.=(self::$options['image_thumbcrop']) ? '-c':'';
-					$res.='/'.$aImage['file'].'" width="'.self::$options['image_thumbsize'].'" class="size-medium" title="'.$aImage['file'].'" alt="" />
+									<img src="'.$aImage['fullpath'].'s'.$options['image_thumbsize'];
+					$res.=($options['image_thumbcrop']) ? '-c':'';
+					$res.='/'.$aImage['file'].'" width="'.$options['image_thumbsize'].'" class="size-medium" title="'.$aImage['file'].'" alt="" />
 								</a>
 								<p class="wp-caption-text" style="display:none">'.$post->post_excerpt['title'].'</p>
 							</div>

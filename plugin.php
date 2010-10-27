@@ -325,7 +325,6 @@ class wpPicasa{
 		global $post;
 		$options=self::$options;
 		$options = array_merge($options,get_option($options['key']));
-		print_r($options);
 		if(get_post_type() == self::$post_type){
 			if(is_single()){
 				self::decode_content(&$post->post_content);

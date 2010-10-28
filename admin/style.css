@@ -1,16 +1,59 @@
+#gpass_holder{
+	float:left;
+	margin-right:20px;
+}
 .hide{
 	display:none;
 }
-#picasa-album-images a{
-	background:transparent none;
-	border:1px solid #EDEDED;
+#picasa-album-images div.ui-sortable{
 	display:block;
-	float:left;
-	margin:3px;
-	padding:2px;
+	height:100%;
+	list-style:none;
+	
 	position:relative;
 }
-#picasa-album-images a:hover{
-	background-color:#ccc;
+#picasa-album-images ul.ui-sortable li{
+	border:1px solid #CCC;
+	cursor:move;
+	display:inline-block;
+	line-height:100%;	
+	margin-bottom:10px;
+	margin-right:10px;
+	padding:3px;
+	position:relative;
 }
-
+.ui-state-highlight {
+	background-color:#ffff80;
+	height: 110px;
+	line-height:100%;
+}
+#picasa-album-images li div{
+	background-color:#F9F9F9;
+	bottom:0;
+	display:none;
+	height:16px;
+	left:0px;
+	opacity:0.95;
+	padding:4px 6px 0px;
+	position:absolute;
+	text-align:center;
+	width:104px;
+}
+#picasa-album-images li a{
+	font-size:11px;
+	margin-right:2px;
+	vertical-align:middle;
+}
+#picasa-album-images li:hover div{
+	display:block;
+}
+.icon{
+	background:left no-repeat;
+	padding-left:20px;
+}
+.icon.hide_image{
+	background:url(../images/lock-image.png) left no-repeat scroll;
+}
+.icon.view_image{
+background:url(../images/zoom_layer.png) left no-repeat scroll;
+}

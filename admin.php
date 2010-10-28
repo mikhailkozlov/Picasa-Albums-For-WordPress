@@ -33,14 +33,23 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		
 		$rows = array(
 			array(
+				'title' => __('Include Private Albums', $this->textdomain),
+				'type' => 'checkbox',
+				'name' => 'private_import_albums',
+				'value'=>'',
+				'extra'=>'id="private_import_albums" class="checkbox" checked=""',
+				'desc' => '',
+			),
+		
+			array(
 				'title' => __('Import Albums', $this->textdomain),
 				'type' => 'button',
 				'name' => 'import_albums',
 				'id'=>'import_albums',
 				'value'=>'Import',
 				'extra'=>'class="button"',
-				'desc' => '<span class="loader hide"><i>Loading...</i></span>',
-			),
+				'desc' => '<span class="loader hide"><i>Loading...</i></span></label><div id="gpass_holder" class="hide">Enter you password: <input name="gpassword" id="gpassword" type="password" value="" class="medium-text"/> (password will not be saved)</div><label>',
+			)
 		);
 		$out.=html('h3', __('Import Data', $this->textdomain));
 		$out.=html('p', __('', $this->textdomain));

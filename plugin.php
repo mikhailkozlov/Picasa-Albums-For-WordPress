@@ -130,7 +130,7 @@ class wpPicasa{
 			'type' => 'button',
 			'name' => 'import_album_images',
 			'id' => 'import_album_images',
-			'extra'=>'class="button" data="'.$post->post_excerpt['id'].'"',
+			'extra'=>'class="button" data="'.$post->post_excerpt['id'].'" authkey="'.$post->post_excerpt['authkey'].'"',
 			'value' => 'Reload Images'
 		));		
 		echo scbForms::input(array(
@@ -225,7 +225,7 @@ class wpPicasa{
 		// /wp-admin/admin-ajax.php?action=myajax-submit
 		echo 'ajax...';
 		// time to curl
-		$xml= new wpPicasaApi($options['username']);
+		$xml= new wpPicasaApi($options['username'],$_GET['password']);
 		$xml->getAlbums();
 		$xml->parseAlbumXml(true);
 		$q = 'SELECT ID, post_mime_type FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' ';
@@ -252,7 +252,7 @@ class wpPicasa{
 		$options = get_option(self::$options['key']);
 			// time to curl
 			$xml= new wpPicasaApi($options['username']);
-			$xml->getImages($_REQUEST['id']);
+			$xml->getImages($_REQUEST['id'],$_REQUEST['authkey']);
 			$xml->parseImageXml(true);
 			self::insertImagesToAlbum($xml->getData(),$_GET['post_ID']);
 			echo '{"r":1,"m":"done!"}';
@@ -325,7 +325,7 @@ class wpPicasa{
 		global $post;
 		$options=self::$options;
 		$options = array_merge($options,get_option($options['key']));
-		print_r($options);
+		#print_r($options);
 		if(get_post_type() == self::$post_type){
 			if(is_single()){
 				self::decode_content(&$post->post_content);
@@ -380,9 +380,16 @@ class wpPicasaApi{
 	private $xml;
 	private $data;
 	private $user;
+	private $_passwd;
+	private $_authCode;
 	
-	function __construct($user){
+	function __construct($user,$password=null){
+		
 		$this->user = $user;
+		if($password !=null && !empty($password)){
+			$this->_passwd = $password;
+			$this->_authenticate();
+		}		
 	}
 	function __get($key){
 		return (!isset($this->$key)) ? $this->$key:null;
@@ -390,14 +397,75 @@ class wpPicasaApi{
 	function getData(){
 		return $this->data;
 	}
-	function getAlbums(){
-		$header = array( 
-		    "MIME-Version: 1.0", 
-		    "Content-type: text/html", 
-		    "Content-transfer-encoding: text" 
-		);
-		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user;
-		$ch = curl_init($url);		
+	
+	
+	
+	/** UTILS **/
+	private function _authenticate() {	
+		$postdata = array(
+            'accountType' => 'GOOGLE',
+            'Email' => $this->user,
+            'Passwd' => $this->_passwd,
+            'service' => 'lh2',
+            'source' => 'wp-picasa_plugin-v01'
+        );
+		
+		$response = $this->_postTo("https://www.google.com/accounts/ClientLogin", $postdata);
+		//process the response;
+		if ($response) {
+			preg_match('/Auth=(.*)/', $response, $matches);
+			if(isset($matches[1])) {
+				$this->_authCode = $matches[1];
+				return TRUE;
+			}
+		}
+		return false;
+	}
+	private function _postTo($url, $data=array(), $header=array()) {
+		
+		//check that the url is provided
+		if (!isset($url)) {
+			return false;
+		}
+		
+		//send the data by curl
+		$ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		if (count($data)>0) {
+			//POST METHOD
+			curl_setopt($ch, CURLOPT_POST, TRUE);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+		} else {
+			$header[] = array("application/x-www-form-urlencoded");
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+		}
+		
+		$response = curl_exec($ch);
+        $info = curl_getinfo($ch);
+        curl_close($ch);
+		
+		//print_r($info);
+		//print $response;
+		if($info['http_code'] == 200) {
+			return $response;
+		} elseif ($info['http_code'] == 400) {
+			throw new Exception('Bad request - '.$response);
+		} elseif ($info['http_code'] == 401) {
+			throw new Exception('Permission Denied - '.$response);
+		} else {
+			return false;
+		}
+	}	
+	private function _getXml($url, $header=array()) {
+		//check that the url is provided
+		if (!isset($url)) {
+			return false;
+		}
+		//send the data by curl
+		$ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_POST,0); // do not use POST to get xml feeds. GET only!!!
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -405,15 +473,67 @@ class wpPicasaApi{
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_VERBOSE, 1);
+		$response = curl_exec($ch);
 		if(intval(curl_errno($ch)) == 0){
-        	$this->xml = curl_exec($ch);
+        	$this->xml = $response;
 		}else{
 			$this->xml=null;
 			$this->error = curl_error($ch);
 		}
+        $info = curl_getinfo($ch);
         curl_close($ch);
-		return true;
+		
+		//print_r($info);
+		//print $response;
+		if($info['http_code'] == 200) {
+			return true;
+		} elseif ($info['http_code'] == 400) {
+			throw new Exception('Bad request - '.$response);
+			return false;
+		} elseif ($info['http_code'] == 401) {
+			throw new Exception('Permission Denied - '.$response);
+			return false;
+		} else {
+			return false;
+		}
+		return false;
 	}
+
+	
+	
+	/****** 		Public getters 		********/
+	function getAlbums(){
+		$header = array( 
+		    "MIME-Version: 1.0", 
+		    "Content-type: text/html", 
+		    "Content-transfer-encoding: text" 
+		);
+		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user.'?kind=album';
+		if(!empty($this->_authCode)){
+			$header[]="Authorization: GoogleLogin auth=".$this->_authCode;
+			$url.='&access=all';
+		}else{
+			$url.='&access=public';
+		}		
+		return $this->_getXml($url,$header);
+	}
+	function getImages($aid,$authkey=null){
+		$header = array( 
+		    "MIME-Version: 1.0", 
+		    "Content-type: text/html", 
+		    "Content-transfer-encoding: text" 
+		);
+		//http://picasaweb.google.com/data/feed/api/user/userID/albumid/albumID
+		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user.'/albumid/'.$aid.'?kind=photo';
+		if($authkey !=null && !empty($authkey)){
+			$url.='&authkey='.$authkey;
+		}
+		$ch = curl_init($url);
+		return $this->_getXml($url,$header);
+	}
+	
+	
+	/****** 		parse XML 		********/
 	function parseAlbumXml($killxml=false){
 		$xml = new SimpleXMLElement($this->xml);
 		$xml->registerXPathNamespace('media', 'http://search.yahoo.com/mrss/'); // define namespace media
@@ -431,11 +551,12 @@ class wpPicasaApi{
 					), // will keep this on record in case we decide to go with more than one album
 					'id'=> (Array)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
 					'name'=>'',//20100902RussiaOddThings
+					'authkey'=>'',
 					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
 					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
 					'title' =>(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
 					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
-					'latlong' => (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'), //
+					'latlong' => '', //
 					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
 					'rights' => (string)$oAlbum->rights, //public
 					'links' => array(
@@ -452,13 +573,19 @@ class wpPicasaApi{
 				}
 				unset($oLink);
 				$aAlbum['thumbnail'] = (Array)$aAlbum['thumbnail'][0];
-				$aAlbum['thumbnail'] = $aAlbum['thumbnail']['@attributes']; 
+				$aAlbum['thumbnail'] = $aAlbum['thumbnail']['@attributes'];
+				$aAlbum['latlong'] = (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'); // 
 				$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
 				$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
 				$aAlbum['id'] = (string)$aAlbum['id'][0];
-				$tmp = explode('/',$aAlbum['links']['text/html']);
+				$url = parse_url($aAlbum['links']['text/html']);
+				$tmp = explode('/',$url['path']);
 				$aAlbum['name']=end($tmp);
-				
+				// if we use auth set authkey
+				if(!empty($this->_authCode)){
+					parse_str($url['query'], $url['query']);
+					$aAlbum['authkey']=$url['query']['authkey'];
+				}				
 				unset($tmp);
 				$this->data[$aAlbum['name']]=$aAlbum;
 				unset($aAlbum);				
@@ -470,31 +597,7 @@ class wpPicasaApi{
 			unset($this->xml);
 		}
 	}
-	function getImages($aid){
-		$header = array( 
-		    "MIME-Version: 1.0", 
-		    "Content-type: text/html", 
-		    "Content-transfer-encoding: text" 
-		);
-		//http://picasaweb.google.com/data/feed/api/user/userID/albumid/albumID
-		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user.'/albumid/'.$aid;
-		$ch = curl_init($url);		
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_POST,0); // do not use POST to get xml feeds. GET only!!!
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $header); //array('Content-type: application/atom+xml','Content-Length: 2000')
-		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 1);
-		if(intval(curl_errno($ch)) == 0){
-        	$this->xml = curl_exec($ch);
-		}else{
-			$this->xml=null;
-			$this->error = curl_error($ch);
-		}
-        curl_close($ch);
-		return true;
-	}
+
 	function parseImageXml($killxml=false){
 		$xml = new SimpleXMLElement($this->xml);
 		$xml->registerXPathNamespace('media', 'http://search.yahoo.com/mrss/'); // define namespace media
@@ -515,7 +618,7 @@ class wpPicasaApi{
 				   	'width'=>(Array)$oAlbum->xpath('./gphoto:width'), // width of the original in px
 				    'height'=>(Array)$oAlbum->xpath('./gphoto:height'), // height of the original in px 
 				    'size'=>(Array)$oAlbum->xpath('./gphoto:size'), // file size of the original in kb				
-					'latlong' => (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'), //
+					'latlong' => '', //
 					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
 					'rights' => (Array)$oAlbum->xpath('./gphoto:access'), //public
 					'pos'=>$c,
@@ -539,9 +642,16 @@ class wpPicasaApi{
 				$aAlbum['fullpath'] =str_replace($aAlbum['file'],'',$aAlbum['fullpath']['@attributes']['src']);
 				// flatten id
 				$aAlbum['id'] = (string)$aAlbum['id'][0];
-				// lat long as array
-				$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
-				$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
+				
+				// private albums do not seem to have georss.
+				$ns = $xml->getDocNamespaces();
+				if(array_key_exists('georss',$ns)){
+					// lat long as array
+					$aAlbum['latlong'] = (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos');
+					$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
+					$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
+				}
+				
 				// flatten right, size, width, height
 				$aAlbum['size'] = (string)$aAlbum['size'][0];
 				$aAlbum['rights'] = (string)$aAlbum['rights'][0];

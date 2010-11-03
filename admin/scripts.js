@@ -1,7 +1,10 @@
 var $j =jQuery.noConflict();
 $j(document).ready(function(){
 	$j("a.fancybox").fancybox();
+	
 	$j("#private_import_albums").attr('checked','');
+	
+	
 	$j("#private_import_albums").change(function(){
 		$j("#gpass_holder").toggleClass('hide');
 		if($j("#gpass_holder").hasClass('hide')){
@@ -27,6 +30,7 @@ $j(document).ready(function(){
 			window.location.href=window.location.href
 		});
 	});
+	// find how to add condition here.
 	$j("#picasa-album-images ul.ui-sortable").sortable({
 		containment: 'parent',
 		forcePlaceholderSize: true,
@@ -45,15 +49,36 @@ $j(document).ready(function(){
 		$j("#picasa-album-images input.button-primary").removeClass('button-primary');
 		return false;
 	});
+	
 	$j('.hide_image').click(function(){
-		$j(this).toggleClass('visible');
-		if($j(this).hasClass('visible')){
-			$j(this).parent().prev('img').fadeTo(0,1);
-		}else{
-			$j(this).parent().prev('img').fadeTo(0,.5);
+		var l = $j(this);
+		var m=0; // martch
+		for(i=0; i<images.length; i++){
+			if(images[i].id == l.attr('id')){
+				m=i;
+				l.toggleClass('visible');
+				if(l.hasClass('visible')){
+					images[i].show="Yes";
+					l.parent().prev('img').fadeTo(0,1);
+				}else{
+					images[i].show="No";
+					l.parent().prev('img').fadeTo(0,.5);
+				}				
+			}
 		}
-		$j('span',this).toggle();
+		$j('span',l).toggle();
 		return false;
 	});
-	
+	$j("#publish").bind("click",function(){
+		var post = $j("#picasa-album-images ul.ui-sortable").sortable("serialize");
+		for(i=0; i<images.length; i++){
+			post += '&id['+images[i].id+']='+images[i].show;
+		}
+		$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_reload_images',post,function(r){
+			
+			// get responce and update textarea
+			$j("form#post").submit();
+		});
+		return false;
+	});
 });

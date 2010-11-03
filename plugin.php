@@ -157,6 +157,10 @@ class wpPicasa{
 			$post->post_excerpt =  json_decode(htmlspecialchars_decode($post->post_excerpt),true);
 		}
 		if(is_array($post->post_excerpt)){
+		echo '<script>';
+		echo 'var album = '.json_encode($post->post_excerpt).';';
+		echo '</script>';
+			
 		echo '<textarea id="excerpt" name="excerpt" style="display:none">'.json_encode($post->post_excerpt).'</textarea>';
 		echo '
 		<div class="inside">
@@ -196,11 +200,9 @@ class wpPicasa{
 		if(!is_array($post->post_content)){
 			$post->post_content =  json_decode(htmlspecialchars_decode($post->post_content),true);
 		}
-		/*
-		echo '<pre>';
-		print_r($post->post_content[1]);
-		echo '</pre>';
-		*/
+		echo '<script>';
+		echo 'var images = '.json_encode($post->post_content).';';
+		echo '</script>';
 		echo '<textarea id="content" name="content" style="display:none">'.json_encode($post->post_content).'</textarea>';
 		echo '<input type="button" id="save_image_order" class="button" value="Save Order" name="save_image_order" />';
 		echo '<div class="inside">			
@@ -211,7 +213,7 @@ class wpPicasa{
 				echo '<li title="'.$image['summary'].'" id="order_'.$i.'"';
 				echo '><img width="110" height="110" src="'.$image['fullpath'].'s110-c/'.$image['file'].'" alt="'.$image['summary'].'" />';
 				echo'<div>';
-				echo '<a href="#hide" class="icon hide_image ';
+				echo '<a href="#hide" id="'.$image['id'].'" class="icon hide_image ';
 				echo ($image['show'] == 'yes') ? 'visible" ><span>hide</span><span style="display:none">show</span>':'" ><span style="display:none">hide</span><span>show</span>';
 				echo '</a>';
 				echo '<a href="'.$image['fullpath'].'s800/'.$image['file'].'" class="icon view_image fancybox" rel="album" title="';

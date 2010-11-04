@@ -63,5 +63,8 @@
 	background:url(../images/lock-image.png) left no-repeat scroll;
 }
 .icon.view_image{
-background:url(../images/zoom_layer.png) left no-repeat scroll;
+	background:url(../images/zoom_layer.png) left no-repeat scroll;
+}
+.icon.cover_image{
+	background:url(../images/image-sunset.png) left no-repeat scroll;
 }

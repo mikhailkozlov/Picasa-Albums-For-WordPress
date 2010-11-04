@@ -28,7 +28,7 @@ class wpPicasa{
 				'v'=>'1.0',
 				'key'=>'picasaOptions_options',
 				'username' => '',
-				'album_thumbsize'=>288,
+				'album_thumbsize'=>160,
 				'album_thumbcrop'=>true, 
 				'image_thumbsize'=>128, // 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
 				'image_thumbcrop'=>true, // true/false
@@ -59,6 +59,7 @@ class wpPicasa{
 	}
 	function load_picasa_javascript(){
 		if ( is_admin() ) {
+			wp_enqueue_script('json', '/wp-admin/load-scripts.php?c=1&load=json2', array('jquery'), '2', true);
 			wp_enqueue_script('picasa_albums_admin', plugins_url('picasa'). '/admin/scripts.js', array('jquery'), '1.0', true);
 			wp_enqueue_style('picasa_albums_admin_css',plugins_url('picasa').'/admin/style.css');
 			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');
@@ -135,7 +136,8 @@ class wpPicasa{
 			'id' => 'import_album_images',
 			'extra'=>'class="button" data="'.$post->post_excerpt['id'].'" authkey="'.$post->post_excerpt['authkey'].'"',
 			'value' => 'Reload Images'
-		));		
+		));
+		/*		
 		echo scbForms::input(array(
 			'type' => 'button',
 			'name' => 'import_album',
@@ -143,6 +145,7 @@ class wpPicasa{
 			'extra'=>'class="button" style="float:right" ',
 			'value' => 'Reload Details'
 		));
+		*/
 		echo '</div>';
 	}
 	/**
@@ -163,7 +166,7 @@ class wpPicasa{
 		echo '<textarea id="excerpt" name="excerpt" style="display:none">'.json_encode($post->post_excerpt).'</textarea>';
 		echo '
 		<div class="inside">
-			<img src="'.$post->post_excerpt['thumbnail']['url'].'" alt="album cover" width="'.$post->post_excerpt['thumbnail']['width'].'" height="'.$post->post_excerpt['thumbnail']['height'].'" style="float:left; margin-right:5px;"/>
+			<img id="cover_image" src="'.$post->post_excerpt['thumbnail']['url'].'" alt="album cover" width="'.$post->post_excerpt['thumbnail']['width'].'" height="'.$post->post_excerpt['thumbnail']['height'].'" style="float:left; margin-right:5px;"/>
 			
 			<ul class="inside">
 				<li>Published: <strong>'.date('D F, jS Y',$post->post_excerpt['published']).'</strong></li>
@@ -196,6 +199,7 @@ class wpPicasa{
 	 */
 	function picasa_admin_album_images(){
 		global $post;
+		$options = get_option(self::$options['key']);
 		if(!is_array($post->post_content)){
 			$post->post_content =  json_decode(htmlspecialchars_decode($post->post_content),true);
 		}
@@ -203,7 +207,7 @@ class wpPicasa{
 		echo 'var images = '.json_encode($post->post_content).';';
 		echo '</script>';
 		echo '<textarea id="content" name="content" style="display:none" class="albumpage">'.json_encode($post->post_content).'</textarea>';
-		echo '<input type="button" id="save_image_order" class="button" value="Save Order" name="save_image_order" />';
+		
 		echo '<div class="inside">			
 		';		
 		if(count($post->post_content) > 0){
@@ -214,12 +218,13 @@ class wpPicasa{
 				echo ($image['show'] == 'yes') ? '':'dimlight';
 				echo '"/>';
 				echo'<div>';
-				echo '<a href="#hide" id="'.$image['id'].'" class="icon hide_image ';
-				echo ($image['show'] == 'yes') ? 'visible" ><span>hide</span><span style="display:none">show</span>':'" ><span style="display:none">hide</span><span>show</span>';
+				echo '<a href="#'.$image['fullpath'].'s'.$options['album_thumbsize'].'-c/'.$image['file'].'" id="'.$image['id'].'" title="Set as album cover" class="icon cover_image" ref="'.$options['album_thumbsize'].'"></a>';
+				echo '<a href="#hide" id="'.$image['id'].'" title="Show/Hide image from public gallery" class="icon hide_image ';
+				echo ($image['show'] == 'yes') ? 'visible" >':'" >'; //echo ($image['show'] == 'yes') ? 'visible" ><span>hide</span><span style="display:none">show</span>':'" ><span style="display:none">hide</span><span>show</span>';
 				echo '</a>';
 				echo '<a href="'.$image['fullpath'].'s800/'.$image['file'].'" class="icon view_image fancybox" rel="album" title="';
 				echo (!empty($image['summary'])) ? $image['summary']:$image['file'];
-				echo '" >view</a>';
+				echo '" >zoom</a>';
 				echo'</div>';
 				echo '</li>';
 			}
@@ -228,7 +233,6 @@ class wpPicasa{
 			echo 'No images!';
 			print_r($post->post_content);
 		}
-		echo '<input type="button" id="save_image_order" class="button" value="Save Order" name="save_image_order" />';
 		echo '
 				<div class="clear"></div>
 			</div>
@@ -245,7 +249,7 @@ class wpPicasa{
 		// /wp-admin/admin-ajax.php?action=myajax-submit
 		echo 'ajax...';
 		// time to curl
-		$xml= new wpPicasaApi($options['username'],$_GET['password']);
+		$xml= new wpPicasaApi($options['username'],$_GET['password'],array('thumbsize'=>$options['album_thumbsize']));
 		$xml->getAlbums();
 		$xml->parseAlbumXml(true);
 		$q = 'SELECT ID, post_mime_type FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' ';
@@ -300,6 +304,9 @@ class wpPicasa{
 				}else{
 					echo '{"r":0,"m":"please provide post and album id"}';
 				}
+			break;
+			case 'reloadDetails':
+				
 			break;
 		}
 		exit;
@@ -440,9 +447,13 @@ class wpPicasaApi{
 	private $_passwd;
 	private $_authCode;
 	
-	function __construct($user,$password=null){
-		
+	private $params=array(
+		'thumbsize'=>160
+	);
+	
+	function __construct($user,$password=null,$params=array()){
 		$this->user = $user;
+		$this->_setParams($params);		
 		if($password !=null && !empty($password)){
 			$this->_passwd = $password;
 			$this->_authenticate();
@@ -458,6 +469,17 @@ class wpPicasaApi{
 	
 	
 	/** UTILS **/
+	// set addtional params
+	private function _setParams($params=array()){
+		if(is_array($params)){
+			foreach($this->params as $k=>$v){
+				if(array_key_exists($k,$params)){
+					$this->params[$k]=$params[$k];
+				}
+			}
+		}
+	}
+	
 	private function _authenticate() {	
 		$postdata = array(
             'accountType' => 'GOOGLE',
@@ -565,7 +587,7 @@ class wpPicasaApi{
 		    "Content-type: text/html", 
 		    "Content-transfer-encoding: text" 
 		);
-		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user.'?kind=album';
+		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user.'?kind=album&thumbsize='.$this->params['thumbsize'].'c';
 		if(!empty($this->_authCode)){
 			$header[]="Authorization: GoogleLogin auth=".$this->_authCode;
 			$url.='&access=all';
@@ -741,3 +763,57 @@ if(!function_exists(flushRules)){
 	   	$wp_rewrite->flush_rules();
 	}
 }
+
+
+/*
+{"author":{
+	"name":"Mikhail Kozlov",
+	"uri":"http://picasaweb.google.com/kozlov.m.a"
+},
+"id":"5426089371675808385",
+"name":"06072005",
+"authkey":"Gv1sRgCNGi7fblgt_1OA",
+"published":1118027591,
+"updated":1263359900,
+"title":"06-07-2005",
+"thumbnail":{
+	"url":"http://lh3.ggpht.com/_X7imT2xUAEM/S01XiO5CUoE/AAAAAAAAQP8/xr6wVjfWXFk/s160-c/06072005.jpg",
+	"height":"160",
+	"width":"160"
+},
+"latlong":false,
+"summary":"",
+"rights":"private",
+"links":{
+	"text/html":"http://picasaweb.google.com/kozlov.m.a/06072005?authkey=Gv1sRgCNGi7fblgt_1OA",
+	"application/atom+xml":"http://picasaweb.google.com/data/entry/api/user/kozlov.m.a/albumid/5426089371675808385?authkey=Gv1sRgCNGi7fblgt_1OA"
+}}
+
+
+
+[{
+"id":"5516889092249585314",
+"published":1284500838,
+"updated":1284500996,
+"file":"IMG_3009.JPG",
+"fullpath":"http:\/\/lh5.ggpht.com\/_X7imT2xUAEM\/TI_tZlDDhqI\/AAAAAAABWtc\/iWuezoabhI0\/",
+"width":"1600",
+"height":"1067",
+"size":"149363",
+"latlong":false,
+"summary":"",
+"rights":"public",
+"pos":1,
+"show":"yes",
+"links":{
+	"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889092249585314",
+	"application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889092249585314"
+	}
+},
+{"id":"5516889092977245474","published":1284500838,"updated":1284678262,"file":"IMG_2686.JPG","fullpath":"http:\/\/lh4.ggpht.com\/_X7imT2xUAEM\/TI_tZnwivSI\/AAAAAAABWtc\/IXzlfx0gLA0\/","width":"1600","height":"1067","size":"112284","latlong":false,"summary":"LSTU just announced new nanotechnology faculty","rights":"public","pos":2,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889092977245474","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889092977245474"}},{"id":"5516889100336657378","published":1284500840,"updated":1284591861,"file":"IMG_3075.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_taDLKc-I\/AAAAAAABWtc\/qaAct1MR5Z0\/","width":"1600","height":"1067","size":"157604","latlong":false,"summary":"","rights":"public","pos":3,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889100336657378","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889100336657378"}},{"id":"5516889108663983346","published":1284500842,"updated":1284678437,"file":"IMG_2978.JPG","fullpath":"http:\/\/lh5.ggpht.com\/_X7imT2xUAEM\/TI_taiMjXPI\/AAAAAAABWtc\/Okv9Fy4C4ps\/","width":"1067","height":"1600","size":"149773","latlong":false,"summary":"","rights":"public","pos":4,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889108663983346","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889108663983346"}},{"id":"5516889122815513810","published":1284500845,"updated":1284500996,"file":"IMG_2831.JPG","fullpath":"http:\/\/lh3.ggpht.com\/_X7imT2xUAEM\/TI_tbW6ilNI\/AAAAAAABWtc\/f5s-4QaayBI\/","width":"1600","height":"1067","size":"108527","latlong":false,"summary":"","rights":"public","pos":5,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889122815513810","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889122815513810"}},{"id":"5516889132501258594","published":1284500847,"updated":1284500996,"file":"IMG_2832.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_tb6_zUWI\/AAAAAAABWtc\/WlhDwscJJmE\/","width":"1600","height":"1067","size":"103751","latlong":false,"summary":"","rights":"public","pos":6,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889132501258594","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889132501258594"}},{"id":"5516889145923142946","published":1284500850,"updated":1284500996,"file":"IMG_2833.JPG","fullpath":"http:\/\/lh3.ggpht.com\/_X7imT2xUAEM\/TI_tcs_1BSI\/AAAAAAABWtc\/cLjBvn8l2mM\/","width":"1600","height":"1067","size":"303092","latlong":false,"summary":"","rights":"public","pos":7,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889145923142946","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889145923142946"}},{"id":"5516889150458384946","published":1284500851,"updated":1284500996,"file":"IMG_2893.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_tc95HUjI\/AAAAAAABWtc\/CDjjO-gKxgg\/","width":"1600","height":"1067","size":"71513","latlong":false,"summary":"","rights":"public","pos":8,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889150458384946","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889150458384946"}},{"id":"5516889158469630306","published":1284500853,"updated":1284500996,"file":"IMG_2894.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_tdbvJOWI\/AAAAAAABWtc\/cGshRlQiqtI\/","width":"1600","height":"1067","size":"63584","latlong":false,"summary":"","rights":"public","pos":9,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889158469630306","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889158469630306"}},{"id":"5516889162592999778","published":1284500854,"updated":1284500996,"file":"IMG_2705.JPG","fullpath":"http:\/\/lh4.ggpht.com\/_X7imT2xUAEM\/TI_tdrGO2WI\/AAAAAAABWtc\/jH8a-oMM0Ck\/","width":"1600","height":"1067","size":"126265","latlong":false,"summary":"","rights":"public","pos":10,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889162592999778","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889162592999778"}},{"id":"5516889181853156514","published":1284500859,"updated":1284500996,"file":"IMG_2522.JPG","fullpath":"http:\/\/lh4.ggpht.com\/_X7imT2xUAEM\/TI_tey2NhKI\/AAAAAAABWtc\/RH_bIuqknxQ\/","width":"1600","height":"1067","size":"193627","latlong":false,"summary":"","rights":"public","pos":11,"show":"yes",
+	"links":{
+		"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889181853156514",
+		"application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889181853156514"
+	}
+}]
+*/

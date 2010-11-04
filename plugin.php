@@ -48,7 +48,7 @@ class wpPicasa{
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action( 'wp_ajax_picasa_ajax_image_action',array('wpPicasa','picasa_ajax_image_action') );
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
-			#add_action( "publish_post", array('wpPicasa','publish_post'));
+			#add_action('edit_post',array('wpPicasa','edit_post'), 12, 0 );
 		}
 		self::load_picasa_javascript();
 				
@@ -57,7 +57,6 @@ class wpPicasa{
 		// set default option
 		add_option('picasaOptions_options', serialize (self::$options),'','yes');
 	}
-	
 	function load_picasa_javascript(){
 		if ( is_admin() ) {
 			wp_enqueue_script('picasa_albums_admin', plugins_url('picasa'). '/admin/scripts.js', array('jquery'), '1.0', true);
@@ -203,7 +202,7 @@ class wpPicasa{
 		echo '<script>';
 		echo 'var images = '.json_encode($post->post_content).';';
 		echo '</script>';
-		echo '<textarea id="content" name="content" style="display:none">'.json_encode($post->post_content).'</textarea>';
+		echo '<textarea id="content" name="content" style="display:none" class="albumpage">'.json_encode($post->post_content).'</textarea>';
 		echo '<input type="button" id="save_image_order" class="button" value="Save Order" name="save_image_order" />';
 		echo '<div class="inside">			
 		';		
@@ -211,7 +210,9 @@ class wpPicasa{
 			echo '<ul class="ui-sortable">';
 			foreach($post->post_content as $i=>$image){
 				echo '<li title="'.$image['summary'].'" id="order_'.$i.'"';
-				echo '><img width="110" height="110" src="'.$image['fullpath'].'s110-c/'.$image['file'].'" alt="'.$image['summary'].'" />';
+				echo '><img width="110" height="110" src="'.$image['fullpath'].'s110-c/'.$image['file'].'" alt="'.$image['summary'].'" class="';
+				echo ($image['show'] == 'yes') ? '':'dimlight';
+				echo '"/>';
 				echo'<div>';
 				echo '<a href="#hide" id="'.$image['id'].'" class="icon hide_image ';
 				echo ($image['show'] == 'yes') ? 'visible" ><span>hide</span><span style="display:none">show</span>':'" ><span style="display:none">hide</span><span>show</span>';
@@ -281,17 +282,43 @@ class wpPicasa{
 		exit;
 	}
 	function picasa_ajax_image_action(){
+		global $wpdb;
 		switch ($_GET['todo']){
-			case 'reorder':
-				echo 'reorder';
-			break;
-			case 'hide_image':
-				echo 'hide';
+			case 'saveAlbum':
+				if(isset($_REQUEST['post_ID']) && intval($_REQUEST['post_ID']) >0){
+					$aOrder = $_REQUEST['order'];
+					$aImages = false;
+					$q="SELECT post_excerpt, post_content FROM ".$wpdb->posts." WHERE ID=".intval($_REQUEST['post_ID']);
+					$row = $wpdb->get_row($q);
+					if(isset($row->post_content)){
+						$aImages = json_decode($row->post_content,true);
+					}
+					if($aImages!== false){
+						$aImages = self::sortArrayByArray($aImages,$aOrder,$_REQUEST['id']);
+					}					
+					echo json_encode($aImages);
+				}else{
+					echo '{"r":0,"m":"please provide post and album id"}';
+				}
 			break;
 		}
 		exit;
 	}
 	
+	// apply sort and show not show
+	function sortArrayByArray($array,$order,$ids){
+		$ordered = array();
+		foreach($order as $key=>$value) {
+			if(array_key_exists($value,$array)) {
+				if(array_key_exists($array[$value]['id'],$ids)){
+					$array[$value]['show'] = $ids[$array[$value]['id']];
+				}
+				$ordered[$key] = $array[$value];
+				unset($array[$value]);
+			}
+		}
+		return $ordered + $array;
+	}
 	function insertAlbums($data,$id=0){
 		global $current_user;
       	get_currentuserinfo();

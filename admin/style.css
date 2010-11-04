@@ -47,6 +47,14 @@
 #picasa-album-images li:hover div{
 	display:block;
 }
+/* add browser support */
+#picasa-album-images li img{
+	opacity:1;
+}
+#picasa-album-images li img.dimlight{
+	opacity:0.5;
+}
+
 .icon{
 	background:left no-repeat;
 	padding-left:20px;

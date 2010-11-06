@@ -14,7 +14,6 @@ class picasaOptions_Options_Page extends scbAdminPage {
 	function validate($options) {
 		return $options;
 	}
-
 	function page_content() {
 		$rows = array(
 			array(
@@ -55,131 +54,93 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		$out.=html('p', __('', $this->textdomain));
 		
 		$out.=$this->table($rows);
-		/*
- 				'username' => '',
-				'album_thumbsize'=>288,
-				'album_thumbcrop'=>true, 
-				'image_thumbsize'=>128, // 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
-				'image_thumbcrop'=>true, // true/false
-				'image_maxsize'=>800, // lint to original
-				'image_class'=>'picasa_image',
-				'use_lightbox'=>true,
-
-		 */
 		$rows = array(
 			array(
-				'title' => __('Album Thumbnail Size', $this->textdomain),
+				'title' => __('Album Thumbnail Height', $this->textdomain),
 				'type' => 'text',
 				'name' => 'album_thumbsize',
 				'extra'=>'class="small-text"',
 				'desc' => '<span>px. </span>'
 			),
 			array(
+				'title' => __('Album Thumbnail Width', $this->textdomain),
+				'type' => 'text',
+				'name' => 'album_thumbsize_width',
+				'extra'=>'class="small-text"',
+				'desc' => '<span>px. <br />
+				Used only if crop set to "no". Note: this value will by used only during page render time.</span>'
+			),
+			array(
 				'title' => __('Crop Album Thumbnails', $this->textdomain),
 				'type' => 'select',
-				'value'=>array(1=>'Yes',0=>'No'),
-				'name' => 'image_thumbcrop',
-				'desc' => '<span></span>'
+				'value'=>array('no'=>'No','yes'=>'Yes'),
+				'name' => 'album_thumbcrop',
+				'desc' => '<span style="color:red">Caution: Uncropped images may brake grid layout!</span>'
 			),
+			array(
+				'title' => __('Album Page Layout', $this->textdomain),
+				'type' => 'select',
+				'value'=>array('rows'=>'Rows','yes'=>'Grid'),
+				'extra'=>' style="width:100px;"',
+				'name' => 'albums_display',
+				'desc' => '<br /><span>Rows is default WP view. All albums look like blogposts. Grid will generate picasa-like presentation.</span>'
+			)
+		);
+		$out.=html('h3', __('Album Page Settings', $this->textdomain));
+		$out.=html('p', __('', $this->textdomain));
+		$out.=$this->table($rows);
+		$rows=array(
 			array(
 				'title' => __('Image Thumbnail Size', $this->textdomain),
 				'type' => 'text',
 				'name' => 'image_thumbsize',
 				'extra'=>'class="small-text"',
-				'desc' => '<span>px. </span>'
+				'desc' => '<span>px. <br />Recommended sizes: 32, 48, 64, 72, 104, 144, 150, 160</span>'
 			),
 			array(
-				'title' => __('Image Max Size', $this->textdomain),
+				'title' => __('Image Max Zoom Size', $this->textdomain),
 				'type' => 'text',
 				'name' => 'image_maxsize',
 				'extra'=>'class="small-text"',
-				'desc' => '<span>px. The max. size of the image users will see in lightbox.</span>'
+				'desc' => '<span>px.<br />
+				The max. size of the image users will see in lightbox.<br />
+				Available sizes: 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
+				</span>'
 			),
 			array(
 				'title' => __('Crop Thumbnails', $this->textdomain),
 				'type' => 'select',
-				'value'=>array(1=>'Yes',0=>'No'),
+				'value'=>array('no'=>'No','yes'=>'Yes'),
 				'name' => 'image_thumbcrop',
-				'desc' => '<span></span>'
+				'desc' => '<br /><span>It is recommended to use crop. this way images look square and align nicely.</span>'
 			)
 			
 		);
-		$out.=html('h3', __('Album Page Settings', $this->textdomain));
-		$out.=html('p', __('', $this->textdomain));
-		
+		$out.=html('h3', __('Gallery Page Settings', $this->textdomain));
+		$out.=html('p', __('Define how your gallery posts will look.', $this->textdomain));
 		$out.=$this->table($rows);
-		
-	/*
-		$rows = array(
+		$rows=array(
 			array(
-				'title' => __('Database Address', $this->textdomain),
+				'title' => __('Image Thumbnail Size', $this->textdomain),
 				'type' => 'text',
-				'name' => 'db_address',
-				'extra' => 'size="50"',
-				'desc' => '<br />Try to use DNS address as IP address can change',
+				'name' => 'embed_image_thumbsize',
+				'extra'=>'class="small-text"',
+				'desc' => '<span>px. <br />Recommended sizes: 32, 48, 64, 72, 104, 144, 150, 160</span>'
 			),
 			array(
-				'title' => __('Database Name', $this->textdomain),
+				'title' => __('Image Max Zoom Size', $this->textdomain),
 				'type' => 'text',
-				'name' => 'db_name',
-				'extra' => 'size="50"'
-			),
-			array(
-				'title' => __('User Name', $this->textdomain),
-				'type' => 'text',
-				'name' => 'db_username',
-				'extra' => 'size="50"'
-			),
-			array(
-				'title' => __('Password', $this->textdomain),
-				'type' => 'password',
-				'name' => 'db_password',
-				'extra' => 'size="50"'
+				'name' => 'embed_image_maxsize',
+				'extra'=>'class="small-text"',
+				'desc' => '<span>px.<br />
+				The max. size of the image users will see in lightbox.<br />
+				Available sizes: 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
+				</span>'
 			)
 		);
-		$out .=
-		 html('h3', __('Database Connection', $this->textdomain))
-		.html('p', __('<span style="color:red">All required!</span>', $this->textdomain))
-		.$this->table($rows);
-		
-		$def_country = (defined('COUNTRY_CODE')) ? COUNTRY_CODE:'not set';
-		$def_currency = (defined('BASE_CURR')) ? BASE_CURR:'not set';
-		
-		$rows = array(
-			array(
-				'title' => __('Default Currency', $this->textdomain),
-				'type' => 'text',
-				'name' => 'currency_name',
-				'extra' => 'size="50"',
-				'desc' => '<br /> Leave blank to fallback on global site settings ('.$def_currency.')'
-			),
-			array(
-				'title' => __('Currency Prefix', $this->textdomain),
-				'type' => 'text',
-				'name' => 'currency_prefix',
-				'extra' => 'size="50"',
-				'desc' => '<br /> Like $ or US'
-			),
-			array(
-				'title' => __('Currency Postfix', $this->textdomain),
-				'type' => 'text',
-				'name' => 'currency_postfix',
-				'extra' => 'size="50"',
-				'desc' => '<br /> Like CA or GBP'
-			),
-			array(
-				'title' => __('Default Country Code', $this->textdomain),
-				'type' => 'text',
-				'name' => 'country_code',
-				'extra' => 'size="50"',
-				'desc' => '<br /> Leave blank to fallback on global site settings ('.$def_country.')'
-			)
-		);
-		$out .=
-		 html('h3', __('Country Settings', $this->textdomain))
-		.html('p', __('', $this->textdomain))
-		.$this->table($rows);
-		*/
+		$out.=html('h3', __('Default Embed Gallery Settings', $this->textdomain));
+		$out.=html('p', __('You can embed your galleries into other posts.', $this->textdomain));
+		$out.=$this->table($rows);
 		echo $this->form_wrap($out);
 	}
 }

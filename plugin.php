@@ -12,9 +12,6 @@ Author: Mikhail Kozlov
 Author URI: http://mikhailkozlov.com
 License: GPLv2
 */
-/**
- * 
- */
 
 
 $picasaOption;
@@ -29,12 +26,16 @@ class wpPicasa{
 				'key'=>'picasaOptions_options',
 				'username' => '',
 				'album_thumbsize'=>160,
-				'album_thumbcrop'=>true, 
+				'album_thumbsize_width'=>160,
+				'album_thumbcrop'=>'yes',
+				'albums_display'=>'rows', 
 				'image_thumbsize'=>128, // 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
-				'image_thumbcrop'=>true, // true/false
+				'image_thumbcrop'=>'yes', // true/false
 				'image_maxsize'=>800, // lint to original
 				'image_class'=>'picasa_image',
 				'use_lightbox'=>true,
+				'embed_image_thumbsize'=>128,
+				'embed_image_maxsize'=>800
 				
 	);
 	function init($options=array()) {

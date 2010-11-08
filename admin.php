@@ -63,20 +63,13 @@ class picasaOptions_Options_Page extends scbAdminPage {
 				'desc' => '<span>px. </span>'
 			),
 			array(
-				'title' => __('Album Thumbnail Width', $this->textdomain),
-				'type' => 'text',
-				'name' => 'album_thumbsize_width',
-				'extra'=>'class="small-text"',
-				'desc' => '<span>px. <br />
-				Used only if crop set to "no". Note: this value will by used only during page render time.</span>'
-			),
-			array(
 				'title' => __('Crop Album Thumbnails', $this->textdomain),
 				'type' => 'select',
 				'value'=>array('no'=>'No','yes'=>'Yes'),
 				'name' => 'album_thumbcrop',
 				'desc' => '<span style="color:red">Caution: Uncropped images may brake grid layout!</span>'
-			),
+			)/*,
+			
 			array(
 				'title' => __('Album Page Layout', $this->textdomain),
 				'type' => 'select',
@@ -85,6 +78,7 @@ class picasaOptions_Options_Page extends scbAdminPage {
 				'name' => 'albums_display',
 				'desc' => '<br /><span>Rows is default WP view. All albums look like blogposts. Grid will generate picasa-like presentation.</span>'
 			)
+			*/
 		);
 		$out.=html('h3', __('Album Page Settings', $this->textdomain));
 		$out.=html('p', __('', $this->textdomain));

@@ -26,7 +26,6 @@ class wpPicasa{
 				'key'=>'picasaOptions_options',
 				'username' => '',
 				'album_thumbsize'=>160,
-				'album_thumbsize_width'=>160,
 				'album_thumbcrop'=>'yes',
 				'albums_display'=>'rows', 
 				'image_thumbsize'=>128, // 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
@@ -45,11 +44,14 @@ class wpPicasa{
 		if ( is_admin() ) {
 			require_once dirname(__FILE__) . '/admin.php';
 			new picasaOptions_Options_Page(__FILE__, $options);
+			add_action('init', array('wpPicasa','embedPicasa_addbuttons'));
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action( 'wp_ajax_picasa_ajax_image_action',array('wpPicasa','picasa_ajax_image_action') );
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
 			#add_action('edit_post',array('wpPicasa','edit_post'), 12, 0 );
+
+			
 		}
 		self::load_picasa_javascript();
 				
@@ -167,7 +169,9 @@ class wpPicasa{
 		echo '<textarea id="excerpt" name="excerpt" style="display:none">'.json_encode($post->post_excerpt).'</textarea>';
 		echo '
 		<div class="inside">
-			<img id="cover_image" src="'.$post->post_excerpt['thumbnail']['url'].'" alt="album cover" width="'.$post->post_excerpt['thumbnail']['width'].'" height="'.$post->post_excerpt['thumbnail']['height'].'" style="float:left; margin-right:5px;"/>
+			<img id="cover_image" src="'.self::parseThumb($post->post_excerpt['thumbnail']['url']).'" alt="album cover" ';
+		echo ($options['album_thumbcrop'] == 'yes') ? ' width="'.$post->post_excerpt['thumbnail']['height'].' height="'.$post->post_excerpt['thumbnail']['height'].'"':''; 
+		echo 'style="float:left; margin-right:5px;"/>
 			
 			<ul class="inside">
 				<li>Published: <strong>'.date('D F, jS Y',$post->post_excerpt['published']).'</strong></li>
@@ -259,9 +263,19 @@ class wpPicasa{
 		}
 		foreach($xml->getData() as $aData){
 			if(is_array($albums) && array_key_exists($aData['id'],$albums)){
+				// update existing album. images will not be updated
 				self::insertAlbums($aData,$albums[$aData['id']]);
 			}else{
-				self::insertAlbums($aData,0);
+				//new album. images will BE imported
+				$post_id = self::insertAlbums($aData,0);
+				if(intval($post_id) > 0){
+					// time to get images
+					$x= new wpPicasaApi($options['username']);
+					echo 'new album '.$aData['id'].' auth'.$aData['authkey'].' post id:'.$post_id.'<br />';
+					$x->getImages($aData['id'],$aData['authkey']);
+					$x->parseImageXml(true);
+					self::insertImagesToAlbum($x->getData(),$post_id);
+				}
 			}
 		}
 		exit;
@@ -396,31 +410,40 @@ class wpPicasa{
 				self::decode_content(&$post->post_content);
 				$res = '';
 				foreach($post->post_content as $i=>$aImage){
-					$res .= '
-							<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
-								<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
-					$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
-					$res.='">
-									<img src="'.$aImage['fullpath'].'s'.$options['image_thumbsize'];
-					$res.=($options['image_thumbcrop']) ? '-c':'';
-					$res.='/'.$aImage['file'].'" width="'.$options['image_thumbsize'].'" class="size-medium" title="'.$aImage['file'].'" alt="" />
-								</a>
-								<p class="wp-caption-text" style="display:none">'.$post->post_excerpt['title'].'</p>
-							</div>
-					'; 
+					if($aImage['show'] == 'yes'){
+						$res .= '
+								<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
+									<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
+						$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+						$res.='">
+										<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
+						$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
+						$res.='/'.$aImage['file'].'"';
+						$res .= ($options['image_thumbcrop'] == 'yes') ? ' width="'.$aImage['thumbnail']['height'].' height="'.$aImage['thumbnail']['height'].'" ':' ';
+						$res.=' class="size-medium" alt="" />
+									</a>
+									<p class="wp-caption-text" style="display:none">';
+						$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+						$res.='</p>
+								</div>
+						'; 
+					}
 				}
 				return $res;			
 			}else{
 				self::decode_content(&$post->post_excerpt);
 				$res = '
 					<div>
-						<div style="width: '.($post->post_excerpt['thumbnail']['width']+10).'px;" class="wp-caption alignleft">
+						<div style="" class="wp-caption alignleft">
 							<a href="'.get_permalink().'">
-								<img height="'.$post->post_excerpt['thumbnail']['height'].'" width="'.$post->post_excerpt['thumbnail']['width'].'" class="size-medium" title="'.$post->post_excerpt['title'].'" alt="" src="'.$post->post_excerpt['thumbnail']['url'].'" />
-							</a>
+								<img class="size-medium" title="'.$post->post_excerpt['title'].'" src="'.self::parseThumb($post->post_excerpt['thumbnail']['url']).'" alt=""';
+				$res .= ($options['album_thumbcrop'] == 'yes') ? ' width="'.$post->post_excerpt['thumbnail']['height'].' height="'.$post->post_excerpt['thumbnail']['height'].'" ':' '; 
+				//			<img height="'.$post->post_excerpt['thumbnail']['height'].'" width="'.$post->post_excerpt['thumbnail']['width'].'" class="size-medium" title="'.$post->post_excerpt['title'].'" alt="" src="'.$post->post_excerpt['thumbnail']['url'].'" />
+				$res .= ' /></a>
 							<p class="wp-caption-text" style="display:none">'.$post->post_excerpt['title'].'</p>
 						</div>
 						'.$post->post_excerpt['summary'].'
+						<div style="clear:both"></div>
 					</div>
 				'; 
 				return $res;			
@@ -434,7 +457,42 @@ class wpPicasa{
 			$c =  json_decode(htmlspecialchars_decode($c),true);
 		}
 	}
-	
+	function parseThumb($path){
+		$options=self::$options;
+		$options = array_merge($options,get_option($options['key']));
+		$path = explode('/',$path);
+		$size= (count($path)-2);
+		$path[$size] ='s'.$options['album_thumbsize'];
+		$path[$size] .= ($options['album_thumbcrop'] == 'yes')? '-c':''; 
+		return implode('/',$path);
+	}
+	/*
+	 ***************** 
+	 * post editing buttons and embed gallery 
+	 *****************
+	 */
+	function embedPicasa_addbuttons() {
+		// Don't bother doing this stuff if the current user lacks permissions
+		if ( ! current_user_can('edit_posts') && ! current_user_can('edit_pages') )
+			return;
+	 
+		//Add only in Rich Editor mode
+		if ( get_user_option('rich_editing') == 'true') {
+			add_filter('mce_external_plugins', array('wpPicasa','add_embedPicasa_tinymce_plugin'));
+			add_filter('mce_buttons', array('wpPicasa','register_embedPicasa_button'));
+		}
+	}
+	 
+	function register_embedPicasa_button($buttons) {
+		array_push($buttons, "separator", "embedPicasa");
+		return $buttons;
+	}
+	 
+	// Load the TinyMCE plugin : editor_plugin.js (wp2.5)
+	function add_embedPicasa_tinymce_plugin($plugin_array) {
+		$plugin_array['embedPicasa'] = plugins_url('picasa').'/tinymce/editor_plugin.js';
+		return $plugin_array;
+	}
 }
 //register_activation_hook( __FILE__, array('wpPicasa','_activate') );
 
@@ -634,10 +692,10 @@ class wpPicasaApi{
 					'authkey'=>'',
 					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
 					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
-					'title' =>(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
+					'title' =>	utf8_encode((string)$oAlbum->title),//2010-09-02 - Russia - Odd Things
 					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
 					'latlong' => '', //
-					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
+					'summary' =>addslashes(utf8_encode((string) $oAlbum->summary)), //Some things in Russia make you wonder
 					'rights' => (string)$oAlbum->rights, //public
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings

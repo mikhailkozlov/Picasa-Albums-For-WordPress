@@ -86,8 +86,11 @@ $j(document).ready(function(){
 	});
 	
 	// save album changes
-	$j("#publish").bind("click",function(){
-		if( $j("textarea#content").hasClass("albumpage") ){
+	var clickPublish = false;
+	$j("#publish, #save-post").bind("click",function(){
+		var btn = $j(this);
+		if(clickPublish == false && $j("textarea#content").hasClass("albumpage") ){
+			clickPublish = true;
 			var post = "todo=saveAlbum&post_ID="+$j("#post_ID").val()+"&"+$j("#picasa-album-images ul.ui-sortable").sortable("serialize");
 			album.summary = $j("#album_summary").val();
 			$j("textarea#excerpt").val(JSON.stringify(album));
@@ -97,7 +100,7 @@ $j(document).ready(function(){
 			$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_image_action',post,function(r){
 				// get responce and update textarea
 				$j("textarea#content").val(r);
-				$j("form#post").submit();
+				btn.click();
 			},'html');
 			return false;
 		}

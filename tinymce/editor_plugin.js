@@ -4,16 +4,19 @@
 
 		init : function(ed, url) {
 			ed.addCommand('mcePicasa', function() {
-				alert("Picasa");
+				
+				//ed.execCommand('mceInsertContent', false, '[picasaweb id="'+m[1]+'"]');
 			});
 
-			ed.addButton('picasa', {
-				title : 'picasa.desc',
+			ed.addButton('wppicasagallery', {
+				title : 'Select PicasaWeb Album',
 				cmd : 'mcePicasa',
-				image : url + '/img/ice--plus.png'
+				image : url + '/img/ice--plus.png',
+				'class':'thickbox',
+				href:tinymce.documentBaseURL + '/media-upload.php?tab=gallery&TB_iframe=true&width=300&height=100'
 			});
 			ed.onNodeChange.add(function(ed, cm, n) {
-				cm.setActive('picasa', n.nodeName == 'IMG');
+				cm.setActive('wppicasagallery', n.nodeName == 'IMG');
 			});
 		},
 		createControl : function(n, cm) {

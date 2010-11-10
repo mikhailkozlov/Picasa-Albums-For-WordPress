@@ -44,7 +44,7 @@ class wpPicasa{
 		if ( is_admin() ) {
 			require_once dirname(__FILE__) . '/admin.php';
 			new picasaOptions_Options_Page(__FILE__, $options);
-			add_action('init', array('wpPicasa','embedPicasa_addbuttons'));
+			
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action( 'wp_ajax_picasa_ajax_image_action',array('wpPicasa','picasa_ajax_image_action') );
@@ -466,33 +466,7 @@ class wpPicasa{
 		$path[$size] .= ($options['album_thumbcrop'] == 'yes')? '-c':''; 
 		return implode('/',$path);
 	}
-	/*
-	 ***************** 
-	 * post editing buttons and embed gallery 
-	 *****************
-	 */
-	function embedPicasa_addbuttons() {
-		// Don't bother doing this stuff if the current user lacks permissions
-		if ( ! current_user_can('edit_posts') && ! current_user_can('edit_pages') )
-			return;
-	 
-		//Add only in Rich Editor mode
-		if ( get_user_option('rich_editing') == 'true') {
-			add_filter('mce_external_plugins', array('wpPicasa','add_embedPicasa_tinymce_plugin'));
-			add_filter('mce_buttons', array('wpPicasa','register_embedPicasa_button'));
-		}
-	}
-	 
-	function register_embedPicasa_button($buttons) {
-		array_push($buttons, "separator", "embedPicasa");
-		return $buttons;
-	}
-	 
-	// Load the TinyMCE plugin : editor_plugin.js (wp2.5)
-	function add_embedPicasa_tinymce_plugin($plugin_array) {
-		$plugin_array['embedPicasa'] = plugins_url('picasa').'/tinymce/editor_plugin.js';
-		return $plugin_array;
-	}
+
 }
 //register_activation_hook( __FILE__, array('wpPicasa','_activate') );
 
@@ -876,3 +850,27 @@ if(!function_exists(flushRules)){
 	}
 }]
 */
+function my_refresh_mce($ver) {
+  $ver += 3;
+  return $ver;
+}
+add_filter( 'tiny_mce_version', 'my_refresh_mce');
+
+
+function add_youtube_button() {
+   if ( ! current_user_can('edit_posts') && ! current_user_can('edit_pages') )
+     return;
+   if ( get_user_option('rich_editing') == 'true') {
+     add_filter('mce_external_plugins', 'add_youtube_tinymce_plugin');
+     add_filter('mce_buttons', 'register_youtube_button');
+   }
+}
+function register_youtube_button($buttons) {
+   array_push($buttons, "|", "wppicasagallery");
+   return $buttons;
+}
+function add_youtube_tinymce_plugin($plugin_array) {
+	$plugin_array['wppicasagallery'] = plugins_url('picasa').'/tinymce/editor_plugin.js';
+	return $plugin_array;
+}
+add_action('init', 'add_youtube_button');

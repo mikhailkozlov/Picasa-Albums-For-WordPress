@@ -4,15 +4,17 @@
 
 		init : function(ed, url) {
 			ed.addCommand('mcePicasa', function() {
+				tb_show('Select Album R', '/wp-admin/admin-ajax.php?action=picasa_ajax_list_albums&height=130&width=100');
+				
 			});
 
-			ed.addButton('picasa', {
-				title : 'picasa.desc',
+			ed.addButton('wppicasagallery', {
+				title : 'Select PicasaWeb Album',
 				cmd : 'mcePicasa',
 				image : url + '/img/ice--plus.png'
 			});
 			ed.onNodeChange.add(function(ed, cm, n) {
-				cm.setActive('picasa', n.nodeName == 'IMG');
+				cm.setActive('wppicasagallery', n.nodeName == 'IMG');
 			});
 		},
 		createControl : function(n, cm) {

@@ -48,6 +48,8 @@ class wpPicasa{
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action( 'wp_ajax_picasa_ajax_image_action',array('wpPicasa','picasa_ajax_image_action') );
+			add_action( 'wp_ajax_picasa_ajax_list_albums',array('wpPicasa','picasa_ajax_list_albums') );
+			
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
 			#add_action('edit_post',array('wpPicasa','edit_post'), 12, 0 );
 
@@ -278,6 +280,27 @@ class wpPicasa{
 				}
 			}
 		}
+		exit;
+	}
+
+	function picasa_ajax_list_albums() {
+		global $seodb, $wpdb;
+		/*
+		 * Now we need to load albums and create filter.
+		 * 
+		 */
+		echo '
+		<a href="#" onclick="send(this);">test</a>
+<script type="text/javascript">
+/* <![CDATA[ */
+function send(t){
+var t =  jQuery(t);
+
+send_to_editor("[picas!!!] - "+t.attr("href"));
+}
+/* ]]> */
+</script>
+		';
 		exit;
 	}
 	
@@ -857,20 +880,20 @@ function my_refresh_mce($ver) {
 add_filter( 'tiny_mce_version', 'my_refresh_mce');
 
 
-function add_youtube_button() {
+function add_picasa_button() {
    if ( ! current_user_can('edit_posts') && ! current_user_can('edit_pages') )
      return;
    if ( get_user_option('rich_editing') == 'true') {
-     add_filter('mce_external_plugins', 'add_youtube_tinymce_plugin');
-     add_filter('mce_buttons', 'register_youtube_button');
+     add_filter('mce_external_plugins', 'add_picasa_tinymce_plugin');
+     add_filter('mce_buttons', 'register_picasa_button');
    }
 }
-function register_youtube_button($buttons) {
+function register_picasa_button($buttons) {
    array_push($buttons, "|", "wppicasagallery");
    return $buttons;
 }
-function add_youtube_tinymce_plugin($plugin_array) {
+function add_picasa_tinymce_plugin($plugin_array) {
 	$plugin_array['wppicasagallery'] = plugins_url('picasa').'/tinymce/editor_plugin.js';
 	return $plugin_array;
 }
-add_action('init', 'add_youtube_button');
+add_action('init', 'add_picasa_button');

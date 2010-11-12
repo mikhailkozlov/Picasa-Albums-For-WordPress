@@ -1,3 +1,63 @@
 #content .alignleft.picasa_image{
 	margin-right:10px;
 }
+.picasa_album_embed{
+	margin:10px 0;
+}
+
+
+
+/*
+ * Scrollable
+ * 
+ */
+.scrollable, .scrollable .items div {
+	/* required settings */
+	position:relative;
+	overflow:hidden;
+	width: 580px;
+}
+
+/*
+	root element for scrollable items. Must be absolutely positioned
+	and it should have a extremely large width to accommodate scrollable items.
+	it's enough that you set width and height for the root element and
+	not for this element.
+*/
+.scrollable .items {
+	/* this cannot be too large */
+	width:20000em;
+	position:absolute;
+}
+#content .items img, .items div{
+	float:left;
+	margin:0 5px 0 0;
+}
+/* this makes it possible to add next button beside scrollable */
+.scrollable {
+	float:left;	
+}
+/* prev, next, prevPage and nextPage buttons */
+a.browse {
+	background:url("images/right.png") no-repeat scroll left transparent;
+	cursor:pointer;
+	display:block;
+	float:left;
+	font-size:1px;
+	height:18px;
+	margin:auto 10px;
+	width:18px;
+}
+/* left */
+a.left				{ background:url("images/left.png") no-repeat scroll 0 0 transparent; margin-left: 0px; }	
+/* right */
+a.right 				{ background-position: 0 0; clear:right; margin-right: 0px;}
+/* left, right */
+a.left:hover, a.right:hover,a.right:active, a.left:active { background-position:0px -18px; }
+
+/* disabled navigational button */
+a.disabled {
+	visibility:hidden !important;		
+} 	
+/* clear fix*/
+.clear {clear: both;display: block;overflow: hidden;visibility: hidden;width: 0;height: 0;}.clearfix:after {clear: both;content:' ';display: block;font-size: 0;line-height: 0;visibility: hidden;width: 0;height: 0;}.clearfix {display: inline-block;}* html .clearfix {height: 1%;}.clearfix {display: block;}

@@ -483,47 +483,86 @@ class wpPicasa{
 	}
 	function picasa_post_filter($content){
 		global $post,$wpdb;
-		$options=self::$options;
-		$options = array_merge($options,get_option($options['key']));
+		$pattern = '/\[PicasaAlbum(.+)\]/';
+		$postCache = array();
 		if(get_post_type() != self::$post_type){
 			if(is_single()){
-				$pattern = '/\[PicasaAlbum(.+)\]/';
-				preg_match($pattern, $content, $matches, PREG_OFFSET_CAPTURE, 3);
-				if(count($matches) > 0 && isset($matches[1][0])){
-					
-					parse_str(htmlspecialchars_decode($matches[1][0]),$args);
+				return preg_replace_callback($pattern,array('wpPicasa','picasa_post_filter_callback'),$content);
+			}
+		}else{
+			
+		}
+		
+	}
+	
+	function picasa_post_filter_callback_tmp($matches){
+		global $postCache; 
+		echo '<br />';
+		$postCache[]=$matches;
+		print_r($matches);
+	}
+	function picasa_post_filter_callback($matches){
+		global $post, $wpdb, $postCache;
+		if(!is_array($postCache)){
+			$postCache=array();
+		}
+				if(count($matches) > 0 && isset($matches[1])){
+					parse_str(htmlspecialchars_decode($matches[1]),$args);
 					if(count($args) > 0 && isset($args['id']) && intval($args['id']) >0 ){
+						$def_args=array(
+							'link_to_album'=>'true',
+							'scroll'=>'false',
+							'limit'=>5,
+							'fancybox'=>'false',
+							'per_page'=>5,
+						);
+						$args = array_merge($def_args,$args);
+						
+						
+						// make sure we have int as id
 						$args['id'] = intval($args['id']);
-						$q = 'SELECT ID, post_title, post_content FROM '.$wpdb->posts.' WHERE ID = '.$args['id'].' AND post_status=\'publish\'';
-						$rs = $wpdb->get_results($q, ARRAY_A);
-						if(count($rs) > 0){
-							print_r($args);
-							$replacement = '
-							<div class="picasa_album_embed" id="album_'.$args['id'].'">
-							';
-							
-							
-							foreach( as $i=>$row){
-								$replacement .= '<a href="#'.$row['ID'].'" data=\'{"id":"'.$row['ID'].'"}\' onclick="send(this);">'.$row['post_title'].'</a><br />';
+						if(!array_key_exists($args['id'],$postCache)){
+							$q = 'SELECT ID, post_date,post_content,post_title,post_status,ping_status,post_name,post_modified,guid,post_parent,post_type FROM '.$wpdb->posts.' WHERE ID = '.$args['id'].' AND post_status=\'publish\'';
+							$rs = $wpdb->get_results($q, ARRAY_A);
+							if(array_key_exists(0,$rs)){
+								$postCache[$args['id']] =$rs[0];
 							}
+							unset($rs); 
+						}
+						if(array_key_exists($args['id'],$postCache) && count($postCache[$args['id']]) > 0){
 							
-							$replacement .= '
-							</div>
+							// get options
+							$options=self::$options;
+							$options = array_merge($options,get_option($options['key']));
+							
+							// get data from JSON
+							$images =  json_decode(htmlspecialchars_decode($postCache[$args['id']]['post_content']),true);
+							
+							$replacement = '<div class="picasa_album_embed">';
+							$replacement .=($args['link_to_album'] == 'true')? '<a href="'.get_permalink($postCache[$args['id']]['ID']).'" style="clear:both">'.$postCache[$args['id']]['post_title'].'</a>':'';
+							$replacement .='<div><a class="prev browse left" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a><div class="scrollable" style="height:'.$options['image_thumbsize'].'px;">';
+							
+							$replacement .= '<div class="items" id="album_'.$args['id'].'" ><div>
 							';
-							
-							$res = preg_replace($pattern, $replacement, $content);
-							return $res;
+							foreach($images as $i=>$image){
+								if($i<$args['limit']){
+									#$replacement .= '
+									#			<a href="'.$image['fullpath'].'s'.$options['image_maxsize'].'/'.$image['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
+									#$replacement.=(!empty($image['summary'])) ? $image['summary']:$image['file'];
+									#$replacement.='">';
+									$replacement.='<img src="'.$image['fullpath'].'s'.intval($options['image_thumbsize']);
+									$replacement.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
+									$replacement.='/'.$image['file'].'"';
+									$replacement .= ($options['image_thumbcrop'] == 'yes') ? ' width="'.$image['thumbnail']['height'].' height="'.$image['thumbnail']['height'].'" ':' ';
+									$replacement.=' class="size-medium" alt="" />';//</a>
+								}					
+								$replacement.= ($i> 0 && ($i%$args['per_page']) == 0) ? '</div><div>':'';
+							}							
+							$replacement .= '</div></div></div><a class="next browse right" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a><div class="clear">&nbsp;</div></div></div>';
+							return $replacement;
 						}
 					}
 				}			
-			}else{
-				$res = '
-				'; 
-				return $res;			
-			}
-		}else{
-			return $content;
-		}		 
 	}
 	
 	function decode_content(&$c){

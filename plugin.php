@@ -114,6 +114,7 @@ class wpPicasa{
 		register_taxonomy_for_object_type('album', 'album');
 		
 		add_filter('the_content',array('wpPicasa','picasa_album_filter'));
+		add_filter('the_content',array('wpPicasa','picasa_post_filter'));
 		
 		// add custom box
 		#is_tax('album')
@@ -284,22 +285,27 @@ class wpPicasa{
 	}
 
 	function picasa_ajax_list_albums() {
-		global $seodb, $wpdb;
+		global $wpdb;
+		$q = 'SELECT ID, post_title FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' AND post_status=\'publish\'';
+		foreach($wpdb->get_results($q, ARRAY_A) as $i=>$row){
+			echo '<a href="#'.$row['ID'].'" data=\'{"id":"'.$row['ID'].'"}\' onclick="send(this);">'.$row['post_title'].'</a><br />';
+		}
+		
 		/*
 		 * Now we need to load albums and create filter.
 		 * 
 		 */
 		echo '
 		<a href="#" onclick="send(this);">test</a>
-<script type="text/javascript">
-/* <![CDATA[ */
-function send(t){
-var t =  jQuery(t);
-
-send_to_editor("[picas!!!] - "+t.attr("href"));
-}
-/* ]]> */
-</script>
+			<script type="text/javascript">
+			/* <![CDATA[ */
+			function send(t){
+				var t =  jQuery(t);
+				var d = jQuery.parseJSON(t.attr("data"));
+				send_to_editor("[PicasaAlbum id="+d.id+"&scroll=false&limit=5]");
+			}
+			/* ]]> */
+			</script>
 		';
 		exit;
 	}
@@ -309,7 +315,7 @@ send_to_editor("[picas!!!] - "+t.attr("href"));
 	 * @return bool
 	 */
 	function picasa_ajax_reload_images() {
-		global $seodb, $wpdb;
+		global $wpdb;
 		if(isset($_GET['post_ID']) && isset($_GET['id'])){
 		$options = get_option(self::$options['key']);
 			// time to curl
@@ -475,6 +481,51 @@ send_to_editor("[picas!!!] - "+t.attr("href"));
 			return $content;
 		}		 
 	}
+	function picasa_post_filter($content){
+		global $post,$wpdb;
+		$options=self::$options;
+		$options = array_merge($options,get_option($options['key']));
+		if(get_post_type() != self::$post_type){
+			if(is_single()){
+				$pattern = '/\[PicasaAlbum(.+)\]/';
+				preg_match($pattern, $content, $matches, PREG_OFFSET_CAPTURE, 3);
+				if(count($matches) > 0 && isset($matches[1][0])){
+					
+					parse_str(htmlspecialchars_decode($matches[1][0]),$args);
+					if(count($args) > 0 && isset($args['id']) && intval($args['id']) >0 ){
+						$args['id'] = intval($args['id']);
+						$q = 'SELECT ID, post_title, post_content FROM '.$wpdb->posts.' WHERE ID = '.$args['id'].' AND post_status=\'publish\'';
+						$rs = $wpdb->get_results($q, ARRAY_A);
+						if(count($rs) > 0){
+							print_r($args);
+							$replacement = '
+							<div class="picasa_album_embed" id="album_'.$args['id'].'">
+							';
+							
+							
+							foreach( as $i=>$row){
+								$replacement .= '<a href="#'.$row['ID'].'" data=\'{"id":"'.$row['ID'].'"}\' onclick="send(this);">'.$row['post_title'].'</a><br />';
+							}
+							
+							$replacement .= '
+							</div>
+							';
+							
+							$res = preg_replace($pattern, $replacement, $content);
+							return $res;
+						}
+					}
+				}			
+			}else{
+				$res = '
+				'; 
+				return $res;			
+			}
+		}else{
+			return $content;
+		}		 
+	}
+	
 	function decode_content(&$c){
 		if(!is_array($c)){
 			$c =  json_decode(htmlspecialchars_decode($c),true);

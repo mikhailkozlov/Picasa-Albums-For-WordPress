@@ -537,7 +537,16 @@ class wpPicasa{
 							
 							// get data from JSON
 							$images =  json_decode(htmlspecialchars_decode($postCache[$args['id']]['post_content']),true);
-							
+							$replacement='<ul id="picasa_carousel" class="picasa_carousel jcarousel-skin-tango">';
+							foreach($images as $i=>$image){
+									$replacement.='<li><img src="'.$image['fullpath'].'s'.intval($options['image_thumbsize']);
+									$replacement.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
+									$replacement.='/'.$image['file'].'"';
+									$replacement .= ($options['image_thumbcrop'] == 'yes') ? ' width="'.$image['thumbnail']['height'].' height="'.$image['thumbnail']['height'].'" ':' ';
+									$replacement.=' class="size-medium" alt="" /></li>';
+							}
+							$replacement.='</ul>';
+							/*
 							$replacement = '<div class="picasa_album_embed">';
 							$replacement .=($args['link_to_album'] == 'true')? '<a href="'.get_permalink($postCache[$args['id']]['ID']).'" style="clear:both">'.$postCache[$args['id']]['post_title'].'</a>':'';
 							$replacement .='<div><a class="prev browse left" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a><div class="scrollable" style="height:'.$options['image_thumbsize'].'px;">';
@@ -559,6 +568,7 @@ class wpPicasa{
 								$replacement.= ($i> 0 && ($i%$args['per_page']) == 0) ? '</div><div>':'';
 							}							
 							$replacement .= '</div></div></div><a class="next browse right" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a><div class="clear">&nbsp;</div></div></div>';
+							*/
 							return $replacement;
 						}
 					}

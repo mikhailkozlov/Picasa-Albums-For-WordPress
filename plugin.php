@@ -112,14 +112,10 @@ class wpPicasa{
 		);
 		register_post_type( 'album',$args);
 		register_taxonomy_for_object_type('album', 'album');
-		
-		add_filter('the_content',array('wpPicasa','picasa_album_filter'));
+
 		add_filter('the_content',array('wpPicasa','picasa_post_filter'));
-		
-		// add custom box
-		#is_tax('album')
-		#query_posts(array('post_type' => array('post','page','album')));
-		#print_r(get_post_types( ));
+		add_filter('the_content',array('wpPicasa','picasa_album_filter'));
+				
 	}
 	function add_custom_boxes(){
 		add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),'album', 'normal', 'high');
@@ -143,7 +139,8 @@ class wpPicasa{
 			'extra'=>'class="button" data="'.$post->post_excerpt['id'].'" authkey="'.$post->post_excerpt['authkey'].'"',
 			'value' => 'Reload Images'
 		));
-		/*		
+		/**
+		 *  need to add		
 		echo scbForms::input(array(
 			'type' => 'button',
 			'name' => 'import_album',
@@ -165,40 +162,34 @@ class wpPicasa{
 			$post->post_excerpt =  json_decode(htmlspecialchars_decode($post->post_excerpt),true);
 		}
 		if(is_array($post->post_excerpt)){
-		echo '<script>';
-		echo 'var album = '.json_encode($post->post_excerpt).';';
-		echo '</script>';
-			
-		echo '<textarea id="excerpt" name="excerpt" style="display:none">'.json_encode($post->post_excerpt).'</textarea>';
-		echo '
-		<div class="inside">
-			<img id="cover_image" src="'.self::parseThumb($post->post_excerpt['thumbnail']['url']).'" alt="album cover" ';
-		echo ($options['album_thumbcrop'] == 'yes') ? ' width="'.$post->post_excerpt['thumbnail']['height'].' height="'.$post->post_excerpt['thumbnail']['height'].'"':''; 
-		echo 'style="float:left; margin-right:5px;"/>
-			
-			<ul class="inside">
-				<li>Published: <strong>'.date('D F, jS Y',$post->post_excerpt['published']).'</strong></li>
-				<li>Last updated:  <strong>'.date('D F, jS Y, H:i',$post->post_excerpt['updated']).'</strong></li>
-				<li>Original Title:  <strong>'.$post->post_excerpt['title'].'</strong></li>
-				<li>Links: <a href="'.$post->post_excerpt['links']['text/html'].'" >Album on Picasa</a> | <a href="'.$post->post_excerpt['links']['application/atom+xml'].'" >Picasa RSS</a></li>
-			</il>
-			<div class="clear"></div>
-			<br />
-			<div>
-				<p><strong>Album Description:</strong></p>
-				<textarea class="attachmentlinks" id="album_summary" tabindex="6" name="album[summary]" cols="40" rows="1">'.$post->post_excerpt['summary'].'</textarea>
-				<p>You can provide your custom album description here.</p>
-			</div>			
-		</div>
-		';
-		/*			
-		echo '<pre>';
-		echo  'Sting: '.print_r($post->post_excerpt).'<br />';
-		echo '</pre>';
-		*/
-		
+			echo '<script>';
+			echo 'var album = '.json_encode($post->post_excerpt).';';
+			echo '</script>';
+				
+			echo '<textarea id="excerpt" name="excerpt" style="display:none">'.json_encode($post->post_excerpt).'</textarea>';
+			echo '
+			<div class="inside">
+				<img id="cover_image" src="'.self::parseThumb($post->post_excerpt['thumbnail']['url']).'" alt="album cover" ';
+			echo (isset($options['album_thumbcrop']) && $options['album_thumbcrop'] == 'yes' && isset($post->post_excerpt['thumbnail'])) ? ' width="'.$post->post_excerpt['thumbnail']['height'].' height="'.$post->post_excerpt['thumbnail']['height'].'"':''; 
+			echo 'style="float:left; margin-right:5px;"/>
+				
+				<ul class="inside">
+					<li>Published: <strong>'.date('D F, jS Y',$post->post_excerpt['published']).'</strong></li>
+					<li>Last updated:  <strong>'.date('D F, jS Y, H:i',$post->post_excerpt['updated']).'</strong></li>
+					<li>Original Title:  <strong>'.$post->post_excerpt['title'].'</strong></li>
+					<li>Links: <a href="'.$post->post_excerpt['links']['text/html'].'" >Album on Picasa</a> | <a href="'.$post->post_excerpt['links']['application/atom+xml'].'" >Picasa RSS</a></li>
+				</il>
+				<div class="clear"></div>
+				<br />
+				<div>
+					<p><strong>Album Description:</strong></p>
+					<textarea class="attachmentlinks" id="album_summary" tabindex="6" name="album[summary]" cols="40" rows="1">'.$post->post_excerpt['summary'].'</textarea>
+					<p>You can provide your custom album description here.</p>
+				</div>			
+			</div>
+			';
 		}else{
-			echo 'Error! Album data is corrupted!';
+			echo 'Error! Album data is corrupted! Try to delete this album and <a href="options-general.php?page=picasa-albums">reload</a> it from Picasa again.';
 		}
 	}
 	/**
@@ -238,7 +229,7 @@ class wpPicasa{
 			}
 			echo '</ul>';
 		}else{
-			echo 'No images!';
+			echo 'No images yet! <a href="#load_imges_now" id="load_imges_now">Get them now!</a> ';
 			print_r($post->post_content);
 		}
 		echo '
@@ -255,7 +246,7 @@ class wpPicasa{
 		global $wpdb;
 		$options = get_option(self::$options['key']);
 		// /wp-admin/admin-ajax.php?action=myajax-submit
-		echo 'ajax...';
+		echo 'doing ajax...';
 		// time to curl
 		$xml= new wpPicasaApi($options['username'],$_GET['password'],array('thumbsize'=>$options['album_thumbsize']));
 		$xml->getAlbums();
@@ -289,8 +280,7 @@ class wpPicasa{
 		$q = 'SELECT ID, post_title FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' AND post_status=\'publish\'';
 		foreach($wpdb->get_results($q, ARRAY_A) as $i=>$row){
 			echo '<a href="#'.$row['ID'].'" data=\'{"id":"'.$row['ID'].'"}\' onclick="send(this);">'.$row['post_title'].'</a><br />';
-		}
-		
+		}		
 		/*
 		 * Now we need to load albums and create filter.
 		 * 
@@ -448,7 +438,7 @@ class wpPicasa{
 										<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
 						$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
 						$res.='/'.$aImage['file'].'"';
-						$res .= ($options['image_thumbcrop'] == 'yes') ? ' width="'.$aImage['thumbnail']['height'].' height="'.$aImage['thumbnail']['height'].'" ':' ';
+						$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['thumbnail']['height'].' height="'.$aImage['thumbnail']['height'].'" ':' ';
 						$res.=' class="size-medium" alt="" />
 									</a>
 									<p class="wp-caption-text" style="display:none">';
@@ -486,13 +476,8 @@ class wpPicasa{
 		$pattern = '/\[PicasaAlbum(.+)\]/';
 		$postCache = array();
 		if(get_post_type() != self::$post_type){
-			if(is_single()){
-				return preg_replace_callback($pattern,array('wpPicasa','picasa_post_filter_callback'),$content);
-			}
-		}else{
-			
+			return preg_replace_callback($pattern,array('wpPicasa','picasa_post_filter_callback'),$content);
 		}
-		
 	}
 	
 	function picasa_post_filter_callback_tmp($matches){
@@ -511,14 +496,12 @@ class wpPicasa{
 					if(count($args) > 0 && isset($args['id']) && intval($args['id']) >0 ){
 						$def_args=array(
 							'link_to_album'=>'true',
-							'scroll'=>'false',
+							'scroll'=>'true',
 							'limit'=>5,
 							'fancybox'=>'false',
 							'per_page'=>5,
 						);
 						$args = array_merge($def_args,$args);
-						
-						
 						// make sure we have int as id
 						$args['id'] = intval($args['id']);
 						if(!array_key_exists($args['id'],$postCache)){
@@ -534,31 +517,43 @@ class wpPicasa{
 							// get options
 							$options=self::$options;
 							$options = array_merge($options,get_option($options['key']));
-							
 							// get data from JSON
 							$images =  json_decode(htmlspecialchars_decode($postCache[$args['id']]['post_content']),true);
-							
+							// start output:
 							$replacement = '<div class="picasa_album_embed">';
 							$replacement .=($args['link_to_album'] == 'true')? '<a href="'.get_permalink($postCache[$args['id']]['ID']).'" style="clear:both">'.$postCache[$args['id']]['post_title'].'</a>':'';
-							$replacement .='<div><a class="prev browse left" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a><div class="scrollable" style="height:'.$options['image_thumbsize'].'px;">';
-							
-							$replacement .= '<div class="items" id="album_'.$args['id'].'" ><div>
-							';
+							$replacement .='<div>';
+							// scroll set to false -> do not show navigation
+							$replacement .=($args['scroll'] == 'true') ? '<a class="prev browse left" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a>':'';
+							$replacement .='<div ';
+							// scroll set to false -> change class
+							$replacement .=($args['scroll'] == 'true') ?  'style="height:'.$options['image_thumbsize'].'px;" class="scrollable"':'class="not-scrollable"';
+							$replacement .= '><div class="items" id="album_'.$args['id'].'" ><div>';
 							foreach($images as $i=>$image){
 								if($i<$args['limit']){
-									#$replacement .= '
-									#			<a href="'.$image['fullpath'].'s'.$options['image_maxsize'].'/'.$image['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
-									#$replacement.=(!empty($image['summary'])) ? $image['summary']:$image['file'];
-									#$replacement.='">';
+									$replacement .= '<a href="';
+									// check if fancybox is true link to image, if not we link to album
+									$replacement .= ($args['fancybox'] !== 'false') ? $image['fullpath'].'s'.$options['image_maxsize'].'/'.$image['file']:get_permalink($postCache[$args['id']]['ID']).'#photo_'.$image['id'];
+									$replacement .= '" rel="'.$post->post_name.' nofollow"';
+									// check if fancybox is true we add class for it
+									$replacement .= ($args['fancybox'] !== 'false') ? ' class="fancybox"':''; 
+									$replacement.= ' title="';
+									$replacement.=(!empty($image['summary'])) ? $image['summary']:$image['file'];
+									$replacement.='">';
 									$replacement.='<img src="'.$image['fullpath'].'s'.intval($options['image_thumbsize']);
 									$replacement.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
 									$replacement.='/'.$image['file'].'"';
-									$replacement .= ($options['image_thumbcrop'] == 'yes') ? ' width="'.$image['thumbnail']['height'].' height="'.$image['thumbnail']['height'].'" ':' ';
-									$replacement.=' class="size-medium" alt="" />';//</a>
+									$replacement .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$image['thumbnail']['height'].' height="'.$image['thumbnail']['height'].'" ':' ';
+									$replacement.=' class="size-medium '; 
+									$replacement.=($args['scroll'] !== 'true') ? ' no-scroll':''; 
+									$replacement.=' " alt="" /></a>';
 								}					
-								$replacement.= ($i> 0 && ($i%$args['per_page']) == 0) ? '</div><div>':'';
+								$replacement.= ($args['scroll'] == 'true' && $i> 0 && ($i%$args['per_page']) == 0 && ($i+1) < $args['limit'] && ($i+1) < count($images)) ? '</div><div>':'';
 							}							
-							$replacement .= '</div></div></div><a class="next browse right" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a><div class="clear">&nbsp;</div></div></div>';
+							$replacement .= '</div></div></div>';
+							// scroll set to false -> do not show navigation
+							$replacement .= ($args['scroll'] == 'true') ? '<a class="next browse right" style="margin-top:'.( ($options['image_thumbsize']/2) - 9).'px;"></a>':'';
+							$replacement .= '<div class="clear">&nbsp;</div></div></div>';
 							return $replacement;
 						}
 					}
@@ -902,7 +897,7 @@ add_filter('rewrite_rules_array',array('wpPicasa','wp_insertPicasaRules'));
 add_filter('query_vars',array('wpPicasa','wp_insertPicasaQueryVars'));
 add_filter('init','flushRules');
 
-if(!function_exists(flushRules)){
+if(!function_exists('flushRules')){
 	// Remember to flush_rules() when adding rules
 	function flushRules(){
 		global $wp_rewrite;
@@ -987,3 +982,5 @@ function add_picasa_tinymce_plugin($plugin_array) {
 	return $plugin_array;
 }
 add_action('init', 'add_picasa_button');
+
+?>

@@ -11,13 +11,14 @@
  * Scrollable
  * 
  */
-.scrollable, .scrollable .items div {
+.scrollable, .not-scrollable, .scrollable .items div {
 	/* required settings */
 	position:relative;
 	overflow:hidden;
+	height:100%;
 	width: 580px;
 }
-
+.not-scrollable{ margin-left:30px;}
 /*
 	root element for scrollable items. Must be absolutely positioned
 	and it should have a extremely large width to accommodate scrollable items.
@@ -29,10 +30,13 @@
 	width:20000em;
 	position:absolute;
 }
-#content .items img, .items div{
+ 
+#content .items img{
 	float:left;
 	margin:0 5px 0 0;
 }
+#content .items img.no-scroll{margin-bottom:5px;}
+ .items div{ float:left;}
 /* this makes it possible to add next button beside scrollable */
 .scrollable {
 	float:left;	

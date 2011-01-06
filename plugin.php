@@ -519,6 +519,7 @@ class wpPicasa{
 							$options = array_merge($options,get_option($options['key']));
 							// get data from JSON
 							$images =  json_decode(htmlspecialchars_decode($postCache[$args['id']]['post_content']),true);
+
 							// start output:
 							$replacement = '<div class="picasa_album_embed">';
 							$replacement .=($args['link_to_album'] == 'true')? '<a href="'.get_permalink($postCache[$args['id']]['ID']).'" style="clear:both">'.$postCache[$args['id']]['post_title'].'</a>':'';
@@ -550,6 +551,7 @@ class wpPicasa{
 								}					
 								$replacement.= ($args['scroll'] == 'true' && $i> 0 && ($i%$args['per_page']) == 0 && ($i+1) < $args['limit'] && ($i+1) < count($images)) ? '</div><div>':'';
 							}							
+
 							$replacement .= '</div></div></div>';
 							// scroll set to false -> do not show navigation
 							$replacement .= ($args['scroll'] == 'true') ? '<a class="next browse right" style="margin-top:'.( ($options['image_thumbsize']/2) - 9).'px;"></a>':'';

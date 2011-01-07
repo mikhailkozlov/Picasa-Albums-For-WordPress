@@ -519,43 +519,31 @@ class wpPicasa{
 							$options = array_merge($options,get_option($options['key']));
 							// get data from JSON
 							$images =  json_decode(htmlspecialchars_decode($postCache[$args['id']]['post_content']),true);
-
-							// start output:
 							$replacement = '<div class="picasa_album_embed">';
 							$replacement .=($args['link_to_album'] == 'true')? '<a href="'.get_permalink($postCache[$args['id']]['ID']).'" style="clear:both">'.$postCache[$args['id']]['post_title'].'</a>':'';
-							$replacement .='<div>';
-							// scroll set to false -> do not show navigation
-							$replacement .=($args['scroll'] == 'true') ? '<a class="prev browse left" style="margin-top:'.($options['image_thumbsize']/2).'px;"></a>':'';
-							$replacement .='<div ';
-							// scroll set to false -> change class
-							$replacement .=($args['scroll'] == 'true') ?  'style="height:'.$options['image_thumbsize'].'px;" class="scrollable"':'class="not-scrollable"';
-							$replacement .= '><div class="items" id="album_'.$args['id'].'" ><div>';
+							$replacement .='<ul class="jcarousel-skin-picasa';
+							$replacement .=($args['scroll'] == 'true') ?  ' picasa_carousel':' no_picasa_carousel" style="height:'.$options['image_thumbsize'].'px';
+							$replacement .=' ">';
 							foreach($images as $i=>$image){
 								if($i<$args['limit']){
+									$replacement.='<li style="width:'.$options['image_thumbsize'].'px; height:'.$options['image_thumbsize'].'px">';
 									$replacement .= '<a href="';
 									// check if fancybox is true link to image, if not we link to album
-									$replacement .= ($args['fancybox'] !== 'false') ? $image['fullpath'].'s'.$options['image_maxsize'].'/'.$image['file']:get_permalink($postCache[$args['id']]['ID']).'#photo_'.$image['id'];
+									$replacement .= ($args['fancybox'] == 'true') ? $image['fullpath'].'s'.$options['image_maxsize'].'/'.$image['file']:get_permalink($postCache[$args['id']]['ID']).'#photo_'.$image['id'];
 									$replacement .= '" rel="'.$post->post_name.' nofollow"';
-									// check if fancybox is true we add class for it
-									$replacement .= ($args['fancybox'] !== 'false') ? ' class="fancybox"':''; 
+									$replacement .= ($args['fancybox'] == 'true') ? ' class="fancybox"':''; 
 									$replacement.= ' title="';
 									$replacement.=(!empty($image['summary'])) ? $image['summary']:$image['file'];
 									$replacement.='">';
 									$replacement.='<img src="'.$image['fullpath'].'s'.intval($options['image_thumbsize']);
 									$replacement.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
 									$replacement.='/'.$image['file'].'"';
-									$replacement .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$image['thumbnail']['height'].' height="'.$image['thumbnail']['height'].'" ':' ';
-									$replacement.=' class="size-medium '; 
-									$replacement.=($args['scroll'] !== 'true') ? ' no-scroll':''; 
-									$replacement.=' " alt="" /></a>';
-								}					
-								$replacement.= ($args['scroll'] == 'true' && $i> 0 && ($i%$args['per_page']) == 0 && ($i+1) < $args['limit'] && ($i+1) < count($images)) ? '</div><div>':'';
-							}							
-
-							$replacement .= '</div></div></div>';
-							// scroll set to false -> do not show navigation
-							$replacement .= ($args['scroll'] == 'true') ? '<a class="next browse right" style="margin-top:'.( ($options['image_thumbsize']/2) - 9).'px;"></a>':'';
-							$replacement .= '<div class="clear">&nbsp;</div></div></div>';
+									$replacement .= ( $options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$image['thumbnail']['height'].' height="'.$image['thumbnail']['height'].'" ':' ';
+									$replacement.=' class="size-medium" alt="" /></a></li>';
+								}
+							}
+							$replacement.='</ul>';
+							$replacement.='</div>';
 							return $replacement;
 						}
 					}

@@ -1,3 +1,7 @@
-This is just test plugin.
-
-I really like plugins, but never built one that will work alse where. Please fill free to help.
+Plugin Name: My Picasa WP Plugin
+Plugin URI: http://www.vayama.com/
+Description: Creates custom post type and displays picasa albums
+Version: 0.0.1
+Author: Mikhail Kozlov	
+Author URI: http://mikhailkozlov.com
+License: GPLv2

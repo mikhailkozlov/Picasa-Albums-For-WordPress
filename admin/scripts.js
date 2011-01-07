@@ -23,8 +23,6 @@ $j(document).ready(function(){
 		$j("#import_album_images").click();
 		return false;
 	});
-	// fold maintenance functions on album page
-	$j("#picasa-album-side").addClass("closed");
 	// enable fancybox 	
 	$j("a.fancybox").fancybox();
 	// import button

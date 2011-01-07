@@ -6,7 +6,7 @@ Requires at least: 3.0.0
 Tested up to: 3.3
 Stable tag: 1.0.0
 
-Picasa Albums For WordPress helps to easily import, display and manage your public PicasaWeb album right in your WordPress site.
+Picasa Albums For WordPress helps to easily import, display and manage your public Picasa Web Albums right in your WordPress site.
 
 == Description ==
 
@@ -41,16 +41,16 @@ Visit my blog for more great ideas on how you can take advantage of Google's fre
 5. Enter you Picasa Web Albums ID and click import.
 6. Head over to "Albums" section and publish albums that you like.
 7. Make sure that permalinks are enabled.
-8. Add link to Albums categoty to your main menu. You can use Menus section to add custom link "http://my_website.com/album/" or you can hard code it to your site.
+8. Add link to Albums category to your main menu. You can use Menus section to add custom link "http://my_website.com/album/" or you can hard code it to your site.
 9. Done.
 
 
 == Licence ==
 
-This plugin is distributed under GPLv3. You can:
+This plugin is distributed under GPL. You can and you should:
 
     * use the software for any purpose,
     * change the software to suit your needs,
     * share the software with your friends and neighbors, and
-    * share the changes you make (please go).
+    * share the changes you make (please do).
 

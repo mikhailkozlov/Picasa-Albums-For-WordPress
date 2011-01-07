@@ -113,9 +113,19 @@ class wpPicasa{
 				
 	}
 	function add_custom_boxes(){
-		add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),'album', 'normal', 'high');
-		add_meta_box( 'picasa-album-images','Album Images',array('wpPicasa','picasa_admin_album_images'),'album', 'normal', 'high');
-		add_meta_box( 'picasa-album-side','Maintenance Functions',array('wpPicasa','picasa_admin_album_import'),'album', 'side', 'low');
+		if(isset($_GET['action'])){
+			add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),'album', 'normal', 'high');
+			add_meta_box( 'picasa-album-images','Album Images',array('wpPicasa','picasa_admin_album_images'),'album', 'normal', 'high');
+			add_meta_box( 'picasa-album-side','Maintenance Functions',array('wpPicasa','picasa_admin_album_import'),'album', 'side', 'low');
+		}else{
+			
+			remove_meta_box( 'title' , 'album' , 'normal' );
+			remove_meta_box( 'commentstatusdiv' , 'album' , 'normal' );
+			remove_meta_box( 'authordiv' , 'album' , 'album' ); 
+			remove_meta_box( 'submitdiv' , 'album' , 'side' );
+			
+			
+		}
 	}
 	
 	function picasa_admin_album_import(){
@@ -165,7 +175,7 @@ class wpPicasa{
 				<ul class="inside">
 					<li>Published: <strong>'.date('D F, jS Y',$post->post_excerpt['published']).'</strong></li>
 					<li>Last updated:  <strong>'.date('D F, jS Y, H:i',$post->post_excerpt['updated']).'</strong></li>
-					<li>Original Title:  <strong>'.$post->post_excerpt['title'].'</strong></li>
+					<li>Original Title:  <strong>'.utf8_decode($post->post_excerpt['title']).'</strong></li>
 					<li>Links: <a href="'.$post->post_excerpt['links']['text/html'].'" >Album on Picasa</a> | <a href="'.$post->post_excerpt['links']['application/atom+xml'].'" >Picasa RSS</a></li>
 				</il>
 				<div class="clear"></div>
@@ -293,7 +303,7 @@ class wpPicasa{
 					if($aImages!== false){
 						$aImages = self::sortArrayByArray($aImages,$aOrder,$_REQUEST['id']);
 					}					
-					echo json_encode($aImages,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP);
+					echo json_encode($aImages);
 				}else{
 					echo '{"r":0,"m":"please provide post and album id"}';
 				}
@@ -385,27 +395,31 @@ class wpPicasa{
 		$options = array_merge($options,get_option($options['key']));
 		if(get_post_type() == self::$post_type){
 			if(is_single()){
-				self::decode_content(&$post->post_content);
+				self::decode_content($post->post_content);
 				$res = '';
-				foreach($post->post_content as $i=>$aImage){
-					if($aImage['show'] == 'yes'){
-						$res .= '
-								<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
-									<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
-						$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
-						$res.='">
-										<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
-						$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
-						$res.='/'.$aImage['file'].'"';
-						$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['thumbnail']['height'].' height="'.$aImage['thumbnail']['height'].'" ':' ';
-						$res.=' class="size-medium" alt="" />
-									</a>
-									<p class="wp-caption-text" style="display:none">';
-						$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
-						$res.='</p>
-								</div>
-						'; 
+				if(!empty($post->post_content) && is_array($post->post_content)){
+					foreach($post->post_content as $i=>$aImage){
+						if($aImage['show'] == 'yes'){
+							$res .= '
+									<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
+										<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
+							$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+							$res.='">
+											<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
+							$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
+							$res.='/'.$aImage['file'].'"';
+							$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['thumbnail']['height'].' height="'.$aImage['thumbnail']['height'].'" ':' ';
+							$res.=' class="size-medium" alt="" />
+										</a>
+										<p class="wp-caption-text" style="display:none">';
+							$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+							$res.='</p>
+									</div>
+							'; 
+						}
 					}
+				}else{
+					$res = 'Error. Please  comeback soon.';
 				}
 				return $res;			
 			}else{

@@ -34,7 +34,7 @@ $j(document).ready(function(){
 		l.val("Loading...");
 		$j.get("/wp-admin/admin-ajax.php?action=picasa_ajax_reload_images",{"id":l.attr("data"),"authkey":l.attr("authkey"),"post_ID":$j("#post_ID").val()},function(){
 			l.val(t);
-			//window.location.href=window.location.href
+			window.location.href=window.location.href
 		});
 	});
 	// check if sortable here

@@ -1,18 +1,15 @@
 <?php
-date_default_timezone_set('America/Los_Angeles');
-/**
- * @package MyPicasaPluginOnline
- */
+
 /*
-Plugin Name: My Picasa WP Plugin
-Plugin URI: http://www.vayama.com/
+Plugin Name: Picasa Albums
+Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 0.0.1
+Version: 1.0.0
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
-License: GPLv2
+License: GPLv3
 */
-
+date_default_timezone_set('America/Los_Angeles');
 
 $picasaOption;
 $path = str_replace('\\','/',dirname(__FILE__)); // windows scramble
@@ -44,11 +41,9 @@ class wpPicasa{
 		if ( is_admin() ) {
 			require_once dirname(__FILE__) . '/admin.php';
 			new picasaOptions_Options_Page(__FILE__, $options);
-			
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action( 'wp_ajax_picasa_ajax_image_action',array('wpPicasa','picasa_ajax_image_action') );
-			
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
 		}
 		self::load_picasa_javascript();
@@ -65,7 +60,6 @@ class wpPicasa{
 			wp_enqueue_style('picasa_albums_admin_css',plugins_url('picasa').'/admin/style.css');
 			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');
 			wp_enqueue_script('fancybox', plugins_url('picasa') . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
-			
 		}else{
 			wp_enqueue_style('picasa_albums_css',plugins_url('picasa').'/style.css');
 			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');

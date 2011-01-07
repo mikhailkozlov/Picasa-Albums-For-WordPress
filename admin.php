@@ -28,18 +28,8 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		 html('h3', __('Picasa Settings', $this->textdomain))
 		.html('p', __('', $this->textdomain))
 		.$this->table($rows);
-		//.html('p', __('<input type="button" class="button" value="Import Now" id="import_albums" name="import_albums">&nbsp;<span class="loader hide"><i>Loading...</i></span>', $this->textdomain));
 		
 		$rows = array(
-			array(
-				'title' => __('Include Private Albums', $this->textdomain),
-				'type' => 'checkbox',
-				'name' => 'private_import_albums',
-				'value'=>'',
-				'extra'=>'id="private_import_albums" class="checkbox" checked=""',
-				'desc' => '',
-			),
-		
 			array(
 				'title' => __('Import Albums', $this->textdomain),
 				'type' => 'button',
@@ -47,7 +37,7 @@ class picasaOptions_Options_Page extends scbAdminPage {
 				'id'=>'import_albums',
 				'value'=>'Import',
 				'extra'=>'class="button"',
-				'desc' => '<span class="loader hide"><i>Loading...</i></span></label><div id="gpass_holder" class="hide">Enter you password: <input name="gpassword" id="gpassword" type="password" value="" class="medium-text"/> (password will not be saved)</div><label>',
+				'desc' => '<span class="loader hide"><i>Loading...</i></span></label><label>',
 			)
 		);
 		$out.=html('h3', __('Import Data', $this->textdomain));
@@ -68,17 +58,7 @@ class picasaOptions_Options_Page extends scbAdminPage {
 				'value'=>array('no'=>'No','yes'=>'Yes'),
 				'name' => 'album_thumbcrop',
 				'desc' => '<span style="color:red">Caution: Uncropped images may brake grid layout!</span>'
-			)/*,
-			
-			array(
-				'title' => __('Album Page Layout', $this->textdomain),
-				'type' => 'select',
-				'value'=>array('rows'=>'Rows','yes'=>'Grid'),
-				'extra'=>' style="width:100px;"',
-				'name' => 'albums_display',
-				'desc' => '<br /><span>Rows is default WP view. All albums look like blogposts. Grid will generate picasa-like presentation.</span>'
 			)
-			*/
 		);
 		$out.=html('h3', __('Album Page Settings', $this->textdomain));
 		$out.=html('p', __('', $this->textdomain));
@@ -113,28 +93,8 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		$out.=html('h3', __('Gallery Page Settings', $this->textdomain));
 		$out.=html('p', __('Define how your gallery posts will look.', $this->textdomain));
 		$out.=$this->table($rows);
-		$rows=array(
-			array(
-				'title' => __('Image Thumbnail Size', $this->textdomain),
-				'type' => 'text',
-				'name' => 'embed_image_thumbsize',
-				'extra'=>'class="small-text"',
-				'desc' => '<span>px. <br />Recommended sizes: 32, 48, 64, 72, 104, 144, 150, 160</span>'
-			),
-			array(
-				'title' => __('Image Max Zoom Size', $this->textdomain),
-				'type' => 'text',
-				'name' => 'embed_image_maxsize',
-				'extra'=>'class="small-text"',
-				'desc' => '<span>px.<br />
-				The max. size of the image users will see in lightbox.<br />
-				Available sizes: 94, 110, 128, 200, 220, 288, 320, 400, 512, 576, 640, 720, 800, 912, 1024, 1152, 1280, 1440, 1600
-				</span>'
-			)
-		);
-		$out.=html('h3', __('Default Embed Gallery Settings', $this->textdomain));
-		$out.=html('p', __('You can embed your galleries into other posts.', $this->textdomain));
-		$out.=$this->table($rows);
+
+		$out.=html('p', __('Do you need more features? Check out <a href="mikhailkozlov.com/picasa_albums_pro" target="blank">Picasa Albums Pro</a>.', $this->textdomain));
 		echo $this->form_wrap($out);
 	}
 }

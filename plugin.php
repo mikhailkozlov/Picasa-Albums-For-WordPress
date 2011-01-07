@@ -48,12 +48,8 @@ class wpPicasa{
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action( 'wp_ajax_picasa_ajax_image_action',array('wpPicasa','picasa_ajax_image_action') );
-			add_action( 'wp_ajax_picasa_ajax_list_albums',array('wpPicasa','picasa_ajax_list_albums') );
 			
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
-			#add_action('edit_post',array('wpPicasa','edit_post'), 12, 0 );
-
-			
 		}
 		self::load_picasa_javascript();
 				
@@ -113,7 +109,6 @@ class wpPicasa{
 		register_post_type( 'album',$args);
 		register_taxonomy_for_object_type('album', 'album');
 
-		add_filter('the_content',array('wpPicasa','picasa_post_filter'));
 		add_filter('the_content',array('wpPicasa','picasa_album_filter'));
 				
 	}
@@ -125,10 +120,7 @@ class wpPicasa{
 	
 	function picasa_admin_album_import(){
 		global $post;
-		if(!is_array($post->post_excerpt)){
-			$post->post_excerpt =  json_decode(htmlspecialchars_decode($post->post_excerpt),true);
-		}
-		
+		self::decode_content($post->post_excerpt);
 		echo '<div class="submitbox">
 			<p>Will reload all data and erase any changes the you made!</p>
 		';
@@ -157,10 +149,7 @@ class wpPicasa{
 	 */
 	function picasa_admin_album_view(){
 		global $post;
-
-		if(!is_array($post->post_excerpt)){
-			$post->post_excerpt =  json_decode(htmlspecialchars_decode($post->post_excerpt),true);
-		}
+		self::decode_content($post->post_excerpt);
 		if(is_array($post->post_excerpt)){
 			echo '<script>';
 			echo 'var album = '.json_encode($post->post_excerpt).';';
@@ -199,16 +188,12 @@ class wpPicasa{
 	function picasa_admin_album_images(){
 		global $post;
 		$options = get_option(self::$options['key']);
-		if(!is_array($post->post_content)){
-			$post->post_content =  json_decode(htmlspecialchars_decode($post->post_content),true);
-		}
+		self::decode_content($post->post_content);
 		echo '<script>';
 		echo 'var images = '.json_encode($post->post_content).';';
 		echo '</script>';
 		echo '<textarea id="content" name="content" style="display:none" class="albumpage">'.json_encode($post->post_content).'</textarea>';
-		
-		echo '<div class="inside">			
-		';		
+		echo '<div class="inside">';		
 		if(count($post->post_content) > 0){
 			echo '<ul class="ui-sortable">';
 			foreach($post->post_content as $i=>$image){
@@ -248,7 +233,7 @@ class wpPicasa{
 		// /wp-admin/admin-ajax.php?action=myajax-submit
 		echo 'doing ajax...';
 		// time to curl
-		$xml= new wpPicasaApi($options['username'],$_GET['password'],array('thumbsize'=>$options['album_thumbsize']));
+		$xml= new wpPicasaApi($options['username'],array('thumbsize'=>$options['album_thumbsize']));
 		$xml->getAlbums();
 		$xml->parseAlbumXml(true);
 		$q = 'SELECT ID, post_mime_type FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' ';
@@ -274,32 +259,6 @@ class wpPicasa{
 		}
 		exit;
 	}
-
-	function picasa_ajax_list_albums() {
-		global $wpdb;
-		$q = 'SELECT ID, post_title FROM '.$wpdb->posts.' WHERE post_type = \''.self::$post_type.'\' AND post_status=\'publish\'';
-		foreach($wpdb->get_results($q, ARRAY_A) as $i=>$row){
-			echo '<a href="#'.$row['ID'].'" data=\'{"id":"'.$row['ID'].'"}\' onclick="send(this);">'.$row['post_title'].'</a><br />';
-		}		
-		/*
-		 * Now we need to load albums and create filter.
-		 * 
-		 */
-		echo '
-		<a href="#" onclick="send(this);">test</a>
-			<script type="text/javascript">
-			/* <![CDATA[ */
-			function send(t){
-				var t =  jQuery(t);
-				var d = jQuery.parseJSON(t.attr("data"));
-				send_to_editor("[PicasaAlbum id="+d.id+"&scroll=false&limit=5]");
-			}
-			/* ]]> */
-			</script>
-		';
-		exit;
-	}
-	
 	/**
 	 * loads images from api
 	 * @return bool
@@ -334,7 +293,7 @@ class wpPicasa{
 					if($aImages!== false){
 						$aImages = self::sortArrayByArray($aImages,$aOrder,$_REQUEST['id']);
 					}					
-					echo json_encode($aImages);
+					echo json_encode($aImages,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP);
 				}else{
 					echo '{"r":0,"m":"please provide post and album id"}';
 				}
@@ -471,88 +430,10 @@ class wpPicasa{
 			return $content;
 		}		 
 	}
-	function picasa_post_filter($content){
-		global $post,$wpdb;
-		$pattern = '/\[PicasaAlbum(.+)\]/';
-		$postCache = array();
-		if(get_post_type() != self::$post_type){
-			return preg_replace_callback($pattern,array('wpPicasa','picasa_post_filter_callback'),$content);
-		}
-	}
-	
-	function picasa_post_filter_callback_tmp($matches){
-		global $postCache; 
-		echo '<br />';
-		$postCache[]=$matches;
-		print_r($matches);
-	}
-	function picasa_post_filter_callback($matches){
-		global $post, $wpdb, $postCache;
-		if(!is_array($postCache)){
-			$postCache=array();
-		}
-				if(count($matches) > 0 && isset($matches[1])){
-					parse_str(htmlspecialchars_decode($matches[1]),$args);
-					if(count($args) > 0 && isset($args['id']) && intval($args['id']) >0 ){
-						$def_args=array(
-							'link_to_album'=>'true',
-							'scroll'=>'true',
-							'limit'=>5,
-							'fancybox'=>'false',
-							'per_page'=>5,
-						);
-						$args = array_merge($def_args,$args);
-						// make sure we have int as id
-						$args['id'] = intval($args['id']);
-						if(!array_key_exists($args['id'],$postCache)){
-							$q = 'SELECT ID, post_date,post_content,post_title,post_status,ping_status,post_name,post_modified,guid,post_parent,post_type FROM '.$wpdb->posts.' WHERE ID = '.$args['id'].' AND post_status=\'publish\'';
-							$rs = $wpdb->get_results($q, ARRAY_A);
-							if(array_key_exists(0,$rs)){
-								$postCache[$args['id']] =$rs[0];
-							}
-							unset($rs); 
-						}
-						if(array_key_exists($args['id'],$postCache) && count($postCache[$args['id']]) > 0){
-							
-							// get options
-							$options=self::$options;
-							$options = array_merge($options,get_option($options['key']));
-							// get data from JSON
-							$images =  json_decode(htmlspecialchars_decode($postCache[$args['id']]['post_content']),true);
-							$replacement = '<div class="picasa_album_embed">';
-							$replacement .=($args['link_to_album'] == 'true')? '<a href="'.get_permalink($postCache[$args['id']]['ID']).'" style="clear:both">'.$postCache[$args['id']]['post_title'].'</a>':'';
-							$replacement .='<ul class="jcarousel-skin-picasa';
-							$replacement .=($args['scroll'] == 'true') ?  ' picasa_carousel':' no_picasa_carousel" style="height:'.$options['image_thumbsize'].'px';
-							$replacement .=' ">';
-							foreach($images as $i=>$image){
-								if($i<$args['limit']){
-									$replacement.='<li style="width:'.$options['image_thumbsize'].'px; height:'.$options['image_thumbsize'].'px">';
-									$replacement .= '<a href="';
-									// check if fancybox is true link to image, if not we link to album
-									$replacement .= ($args['fancybox'] == 'true') ? $image['fullpath'].'s'.$options['image_maxsize'].'/'.$image['file']:get_permalink($postCache[$args['id']]['ID']).'#photo_'.$image['id'];
-									$replacement .= '" rel="'.$post->post_name.' nofollow"';
-									$replacement .= ($args['fancybox'] == 'true') ? ' class="fancybox"':''; 
-									$replacement.= ' title="';
-									$replacement.=(!empty($image['summary'])) ? $image['summary']:$image['file'];
-									$replacement.='">';
-									$replacement.='<img src="'.$image['fullpath'].'s'.intval($options['image_thumbsize']);
-									$replacement.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
-									$replacement.='/'.$image['file'].'"';
-									$replacement .= ( $options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$image['thumbnail']['height'].' height="'.$image['thumbnail']['height'].'" ':' ';
-									$replacement.=' class="size-medium" alt="" /></a></li>';
-								}
-							}
-							$replacement.='</ul>';
-							$replacement.='</div>';
-							return $replacement;
-						}
-					}
-				}			
-	}
 	
 	function decode_content(&$c){
 		if(!is_array($c)){
-			$c =  json_decode(htmlspecialchars_decode($c),true);
+			$c =  json_decode(htmlspecialchars_decode(stripcslashes($c)),true);
 		}
 	}
 	function parseThumb($path){
@@ -575,20 +456,14 @@ class wpPicasaApi{
 	private $xml;
 	private $data;
 	private $user;
-	private $_passwd;
-	private $_authCode;
 	
 	private $params=array(
 		'thumbsize'=>160
 	);
 	
-	function __construct($user,$password=null,$params=array()){
+	function __construct($user,$params=array()){
 		$this->user = $user;
 		$this->_setParams($params);		
-		if($password !=null && !empty($password)){
-			$this->_passwd = $password;
-			$this->_authenticate();
-		}		
 	}
 	function __get($key){
 		return (!isset($this->$key)) ? $this->$key:null;
@@ -611,26 +486,6 @@ class wpPicasaApi{
 		}
 	}
 	
-	private function _authenticate() {	
-		$postdata = array(
-            'accountType' => 'GOOGLE',
-            'Email' => $this->user,
-            'Passwd' => $this->_passwd,
-            'service' => 'lh2',
-            'source' => 'wp-picasa_plugin-v01'
-        );
-		
-		$response = $this->_postTo("https://www.google.com/accounts/ClientLogin", $postdata);
-		//process the response;
-		if ($response) {
-			preg_match('/Auth=(.*)/', $response, $matches);
-			if(isset($matches[1])) {
-				$this->_authCode = $matches[1];
-				return TRUE;
-			}
-		}
-		return false;
-	}
 	private function _postTo($url, $data=array(), $header=array()) {
 		
 		//check that the url is provided
@@ -719,12 +574,7 @@ class wpPicasaApi{
 		    "Content-transfer-encoding: text" 
 		);
 		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user.'?kind=album&thumbsize='.$this->params['thumbsize'].'c';
-		if(!empty($this->_authCode)){
-			$header[]="Authorization: GoogleLogin auth=".$this->_authCode;
-			$url.='&access=all';
-		}else{
-			$url.='&access=public';
-		}		
+		$url.='&access=public';
 		return $this->_getXml($url,$header);
 	}
 	function getImages($aid,$authkey=null){
@@ -735,9 +585,7 @@ class wpPicasaApi{
 		);
 		//http://picasaweb.google.com/data/feed/api/user/userID/albumid/albumID
 		$url='http://picasaweb.google.com/data/feed/api/user/'.$this->user.'/albumid/'.$aid.'?kind=photo';
-		if($authkey !=null && !empty($authkey)){
-			$url.='&authkey='.$authkey;
-		}
+		// may be we need to pass key here
 		$ch = curl_init($url);
 		return $this->_getXml($url,$header);
 	}
@@ -764,10 +612,10 @@ class wpPicasaApi{
 					'authkey'=>'',
 					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
 					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
-					'title' =>	utf8_encode((string)$oAlbum->title),//2010-09-02 - Russia - Odd Things
+					'title' =>	(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
 					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
 					'latlong' => '', //
-					'summary' =>addslashes(utf8_encode((string) $oAlbum->summary)), //Some things in Russia make you wonder
+					'summary' =>addslashes((string) $oAlbum->summarsy), //Some things in Russia make you wonder
 					'rights' => (string)$oAlbum->rights, //public
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings
@@ -817,20 +665,21 @@ class wpPicasaApi{
 		$xml->registerXPathNamespace('exif', 'http://schemas.google.com/photos/exif/2007'); // define namespace media
 		if(count($xml->entry) > 0){
 			$c=0;
-			foreach($xml->entry as $i=>$oAlbum){
+			foreach($xml->entry as $i=>$oImage){
 				$c++;
-				$aAlbum = array(
-					'id'=> (Array)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
-					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
-					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
-					'file' =>(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
-					'fullpath' =>$oAlbum->content,//2010-09-02 - Russia - Odd Things
-				   	'width'=>(Array)$oAlbum->xpath('./gphoto:width'), // width of the original in px
-				    'height'=>(Array)$oAlbum->xpath('./gphoto:height'), // height of the original in px 
-				    'size'=>(Array)$oAlbum->xpath('./gphoto:size'), // file size of the original in kb				
+				$aImage = array(
+					'id'=> (Array)$oImage->xpath('./gphoto:id'), //5516889074505060529
+					'published'=>strtotime($oImage->published), // strtotime(2010-09-11T04:58:08.000Z);
+					'updated'=>strtotime($oImage->updated),// // strtotime(2010-09-11T04:58:08.000Z);
+					'file' =>(string)$oImage->title,//2010-09-02 - Russia - Odd Things
+					'fullpath' =>$oImage->content,//2010-09-02 - Russia - Odd Things
+				   	'width'=>(Array)$oImage->xpath('./gphoto:width'), // width of the original in px
+				    'height'=>(Array)$oImage->xpath('./gphoto:height'), // height of the original in px 
+				    'size'=>(Array)$oImage->xpath('./gphoto:size'), // file size of the original in kb				
 					'latlong' => '', //
-					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
-					'rights' => (Array)$oAlbum->xpath('./gphoto:access'), //public
+					'thumbnail' => (Array)$oImage->xpath('./media:group/media:thumbnail'), //
+					'summary' =>addslashes((string) $oImage->summary), //Some things in Russia make you wonder
+					'rights' => (Array)$oImage->xpath('./gphoto:access'), //public
 					'pos'=>$c,
 					'show'=>'yes',
 					'links' => array(
@@ -838,40 +687,42 @@ class wpPicasaApi{
 						'application/atom+xml'=>'' //http://picasaweb.google.com/data/feed/api/user/kozlov.m.a/albumid/5516889074505060529
 					)
 				);
-				foreach($oAlbum->link as $oLink){
+				
+				foreach($oImage->link as $oLink){
 					$a = (Array)$oLink->attributes();
 					$a = $a['@attributes'];
 					if($a['rel'] == 'alternate' || $a['rel'] == 'self'){
-						$aAlbum['links'][$a['type']] = $a['href'];
+						$aImage['links'][$a['type']] = $a['href'];
 					}
 				}
 				unset($oLink);
-				$tmp = explode('/',$aAlbum['thumbnail']['url']);
+				$aImage['thumbnail'] = (Array)$aImage['thumbnail'][0];
+				$aImage['thumbnail'] = $aImage['thumbnail']['@attributes'];
 				// some trickery to get image path
-				$aAlbum['fullpath'] = (Array)$aAlbum['fullpath'];
-				$aAlbum['fullpath'] =str_replace($aAlbum['file'],'',$aAlbum['fullpath']['@attributes']['src']);
+				$aImage['fullpath'] = (Array)$aImage['fullpath'];
+				$aImage['fullpath'] =str_replace($aImage['file'],'',$aImage['fullpath']['@attributes']['src']);
 				// flatten id
-				$aAlbum['id'] = (string)$aAlbum['id'][0];
+				$aImage['id'] = (string)$aImage['id'][0];
 				
 				// private albums do not seem to have georss.
 				$ns = $xml->getDocNamespaces();
 				if(array_key_exists('georss',$ns)){
 					// lat long as array
-					$aAlbum['latlong'] = (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos');
-					$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
-					$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
+					$aImage['latlong'] = (Array)$oImage->xpath('./georss:where/gml:Point/gml:pos');
+					$aImage['latlong'] = explode(' ',(string)$aImage['latlong'][0]);
+					$aImage['latlong'] = (count($aImage['latlong']) == 1) ? false:$aImage['latlong'];
 				}
 				
 				// flatten right, size, width, height
-				$aAlbum['size'] = (string)$aAlbum['size'][0];
-				$aAlbum['rights'] = (string)$aAlbum['rights'][0];
-				$aAlbum['height'] = (string)$aAlbum['height'][0];
-				$aAlbum['width'] = (string)$aAlbum['width'][0];
+				$aImage['size'] = (string)$aImage['size'][0];
+				$aImage['rights'] = (string)$aImage['rights'][0];
+				$aImage['height'] = (string)$aImage['height'][0];
+				$aImage['width'] = (string)$aImage['width'][0];
 				unset($tmp);
-				$this->data[]=$aAlbum;
-				unset($aAlbum);				
+				$this->data[]=$aImage;
+				unset($aImage);				
 			}
-			unset($oAlbum);
+			unset($oImage);
 		}
 		unset($xml);
 		if($killxml){
@@ -894,83 +745,4 @@ if(!function_exists('flushRules')){
 	   	$wp_rewrite->flush_rules();
 	}
 }
-
-
-/*
-{"author":{
-	"name":"Mikhail Kozlov",
-	"uri":"http://picasaweb.google.com/kozlov.m.a"
-},
-"id":"5426089371675808385",
-"name":"06072005",
-"authkey":"Gv1sRgCNGi7fblgt_1OA",
-"published":1118027591,
-"updated":1263359900,
-"title":"06-07-2005",
-"thumbnail":{
-	"url":"http://lh3.ggpht.com/_X7imT2xUAEM/S01XiO5CUoE/AAAAAAAAQP8/xr6wVjfWXFk/s160-c/06072005.jpg",
-	"height":"160",
-	"width":"160"
-},
-"latlong":false,
-"summary":"",
-"rights":"private",
-"links":{
-	"text/html":"http://picasaweb.google.com/kozlov.m.a/06072005?authkey=Gv1sRgCNGi7fblgt_1OA",
-	"application/atom+xml":"http://picasaweb.google.com/data/entry/api/user/kozlov.m.a/albumid/5426089371675808385?authkey=Gv1sRgCNGi7fblgt_1OA"
-}}
-
-
-
-[{
-"id":"5516889092249585314",
-"published":1284500838,
-"updated":1284500996,
-"file":"IMG_3009.JPG",
-"fullpath":"http:\/\/lh5.ggpht.com\/_X7imT2xUAEM\/TI_tZlDDhqI\/AAAAAAABWtc\/iWuezoabhI0\/",
-"width":"1600",
-"height":"1067",
-"size":"149363",
-"latlong":false,
-"summary":"",
-"rights":"public",
-"pos":1,
-"show":"yes",
-"links":{
-	"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889092249585314",
-	"application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889092249585314"
-	}
-},
-{"id":"5516889092977245474","published":1284500838,"updated":1284678262,"file":"IMG_2686.JPG","fullpath":"http:\/\/lh4.ggpht.com\/_X7imT2xUAEM\/TI_tZnwivSI\/AAAAAAABWtc\/IXzlfx0gLA0\/","width":"1600","height":"1067","size":"112284","latlong":false,"summary":"LSTU just announced new nanotechnology faculty","rights":"public","pos":2,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889092977245474","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889092977245474"}},{"id":"5516889100336657378","published":1284500840,"updated":1284591861,"file":"IMG_3075.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_taDLKc-I\/AAAAAAABWtc\/qaAct1MR5Z0\/","width":"1600","height":"1067","size":"157604","latlong":false,"summary":"","rights":"public","pos":3,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889100336657378","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889100336657378"}},{"id":"5516889108663983346","published":1284500842,"updated":1284678437,"file":"IMG_2978.JPG","fullpath":"http:\/\/lh5.ggpht.com\/_X7imT2xUAEM\/TI_taiMjXPI\/AAAAAAABWtc\/Okv9Fy4C4ps\/","width":"1067","height":"1600","size":"149773","latlong":false,"summary":"","rights":"public","pos":4,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889108663983346","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889108663983346"}},{"id":"5516889122815513810","published":1284500845,"updated":1284500996,"file":"IMG_2831.JPG","fullpath":"http:\/\/lh3.ggpht.com\/_X7imT2xUAEM\/TI_tbW6ilNI\/AAAAAAABWtc\/f5s-4QaayBI\/","width":"1600","height":"1067","size":"108527","latlong":false,"summary":"","rights":"public","pos":5,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889122815513810","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889122815513810"}},{"id":"5516889132501258594","published":1284500847,"updated":1284500996,"file":"IMG_2832.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_tb6_zUWI\/AAAAAAABWtc\/WlhDwscJJmE\/","width":"1600","height":"1067","size":"103751","latlong":false,"summary":"","rights":"public","pos":6,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889132501258594","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889132501258594"}},{"id":"5516889145923142946","published":1284500850,"updated":1284500996,"file":"IMG_2833.JPG","fullpath":"http:\/\/lh3.ggpht.com\/_X7imT2xUAEM\/TI_tcs_1BSI\/AAAAAAABWtc\/cLjBvn8l2mM\/","width":"1600","height":"1067","size":"303092","latlong":false,"summary":"","rights":"public","pos":7,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889145923142946","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889145923142946"}},{"id":"5516889150458384946","published":1284500851,"updated":1284500996,"file":"IMG_2893.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_tc95HUjI\/AAAAAAABWtc\/CDjjO-gKxgg\/","width":"1600","height":"1067","size":"71513","latlong":false,"summary":"","rights":"public","pos":8,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889150458384946","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889150458384946"}},{"id":"5516889158469630306","published":1284500853,"updated":1284500996,"file":"IMG_2894.JPG","fullpath":"http:\/\/lh6.ggpht.com\/_X7imT2xUAEM\/TI_tdbvJOWI\/AAAAAAABWtc\/cGshRlQiqtI\/","width":"1600","height":"1067","size":"63584","latlong":false,"summary":"","rights":"public","pos":9,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889158469630306","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889158469630306"}},{"id":"5516889162592999778","published":1284500854,"updated":1284500996,"file":"IMG_2705.JPG","fullpath":"http:\/\/lh4.ggpht.com\/_X7imT2xUAEM\/TI_tdrGO2WI\/AAAAAAABWtc\/jH8a-oMM0Ck\/","width":"1600","height":"1067","size":"126265","latlong":false,"summary":"","rights":"public","pos":10,"show":"yes","links":{"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889162592999778","application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889162592999778"}},{"id":"5516889181853156514","published":1284500859,"updated":1284500996,"file":"IMG_2522.JPG","fullpath":"http:\/\/lh4.ggpht.com\/_X7imT2xUAEM\/TI_tey2NhKI\/AAAAAAABWtc\/RH_bIuqknxQ\/","width":"1600","height":"1067","size":"193627","latlong":false,"summary":"","rights":"public","pos":11,"show":"yes",
-	"links":{
-		"text\/html":"http:\/\/picasaweb.google.com\/kozlov.m.a\/20100902RussiaOddThings#5516889181853156514",
-		"application\/atom+xml":"http:\/\/picasaweb.google.com\/data\/entry\/api\/user\/kozlov.m.a\/albumid\/5516889074505060529\/photoid\/5516889181853156514"
-	}
-}]
-*/
-function my_refresh_mce($ver) {
-  $ver += 3;
-  return $ver;
-}
-add_filter( 'tiny_mce_version', 'my_refresh_mce');
-
-
-function add_picasa_button() {
-   if ( ! current_user_can('edit_posts') && ! current_user_can('edit_pages') )
-     return;
-   if ( get_user_option('rich_editing') == 'true') {
-     add_filter('mce_external_plugins', 'add_picasa_tinymce_plugin');
-     add_filter('mce_buttons', 'register_picasa_button');
-   }
-}
-function register_picasa_button($buttons) {
-   array_push($buttons, "|", "wppicasagallery");
-   return $buttons;
-}
-function add_picasa_tinymce_plugin($plugin_array) {
-	$plugin_array['wppicasagallery'] = plugins_url('picasa').'/tinymce/editor_plugin.js';
-	return $plugin_array;
-}
-add_action('init', 'add_picasa_button');
-
 ?>

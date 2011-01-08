@@ -1,32 +1,44 @@
 var albumPage = false;
-
+var newName = false;
 var $j =jQuery.noConflict();
 $j(document).ready(function(){
 	/************ option page function **************/
-	$j("#private_import_albums").attr('checked','');
-	$j("#private_import_albums").change(function(){
-		$j("#gpass_holder").toggleClass('hide');
-		if($j("#gpass_holder").hasClass('hide')){
-			$j("#gpass_holder input").val('');
-		}
+	// little validation
+	if($j("input#username").attr('ref') == 'new'){
+		newName = true;
+		$j("#import_albums").attr('disabled','disabled');
+		$j(this).next('span').show();
+	}else{
+		newName = false;
+	}
+	$j("input#username").bind('keyup, keydown',function(){
+		$j(this).next('span').show();
+		$j("#import_albums").attr('disabled','disabled');
+		newName = true;
 	});
 	/************ END option page function **************/	
 	
 	/************ shared function **************/
 	$j("#import_albums").click(function(){
-		var l = $j(this).next();
-		l.show();
-		$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_import',{'password':$j("#gpassword").val()},function(){
-			l.hide();
-		});
+		if(!newName){
+			var l = $j(this).next();
+			l.show();
+			$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_import',{'user':$j('input#username').val(),'password':$j("#gpassword").val()},function(){
+				l.hide();
+			});
+		}else{
+			alert('Save options before importing albums!');
+		}
 	});
 
 	/************ end shared function **************/
 	
 	
 	/************ custom post type functions **************/
-	// fold maintenance functions on album page
-	$j("#picasa-album-side").addClass("closed");
+	$j("#load_imges_now").bind("click",function(){
+		$j("#import_album_images").click();
+		return false;
+	});
 	// enable fancybox 	
 	$j("a.fancybox").fancybox();
 	// import button

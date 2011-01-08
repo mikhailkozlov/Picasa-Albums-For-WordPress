@@ -282,7 +282,7 @@ class wpPicasa{
 			$albums[$row['post_mime_type']] =$row['ID'];
 		}
 		foreach($xml->getData() as $aData){
-			if(is_array($albums) && array_key_exists($aData['id'],$albums)){
+			if(isset($albums) && is_array($albums) && array_key_exists($aData['id'],$albums)){
 				// update existing album. images will not be updated
 				self::insertAlbums($aData,$albums[$aData['id']]);
 			}else{
@@ -607,7 +607,17 @@ class wpPicasa{
 		$path[$size] .= ($options['album_thumbcrop'] == 'yes')? '-c':''; 
 		return implode('/',$path);
 	}
-
+	/**
+	 * deactivation hook
+	 */
+	function picasa_albums_cleanup(){
+		global $wpdb;
+		// remove posts
+		$q='DELETE FROM '.$wpdb->posts.' WHERE post_type=\''.self::$post_type.'\'';
+		$wpdb->query($q);
+		// remove settings
+		delete_option(self::$options['key']);
+	}
 }
 //register_activation_hook( __FILE__, array('wpPicasa','_activate') );
 
@@ -904,7 +914,7 @@ class wpPicasaApi{
 				if(array_key_exists('georss',$ns)){
 					// lat long as array
 					$aImage['latlong'] = (Array)$oImage->xpath('./georss:where/gml:Point/gml:pos');
-					$aImage['latlong'] = explode(' ',(string)$aImage['latlong'][0]);
+					$aImage['latlong'] = (isset($aImage['latlong']) && isset($aImage['latlong'][0])) ? explode(' ',(string)$aImage['latlong'][0]):array();
 					$aImage['latlong'] = (count($aImage['latlong']) == 1) ? false:$aImage['latlong'];
 				}
 				

@@ -2,6 +2,7 @@
 	float:left;
 	margin-right:20px;
 }
+span.loader{ background:url(../images/loading.gif) right no-repeat; padding-right:40px;}
 .hide{
 	display:none;
 }

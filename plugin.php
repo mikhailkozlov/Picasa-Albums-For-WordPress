@@ -4,7 +4,7 @@
 Plugin Name: Picasa Albums
 Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 1.0.0
+Version: 1.0.1
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
 License: GPLv3

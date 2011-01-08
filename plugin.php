@@ -1,18 +1,15 @@
 <?php
-date_default_timezone_set('America/Los_Angeles');
-/**
- * @package MyPicasaPluginOnline
- */
+
 /*
-Plugin Name: My Picasa WP Plugin
-Plugin URI: http://www.vayama.com/
+Plugin Name: Picasa Albums
+Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 0.0.1
+Version: 1.0.0
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
-License: GPLv2
+License: GPLv3
 */
-
+date_default_timezone_set('America/Los_Angeles');
 
 $picasaOption;
 $path = str_replace('\\','/',dirname(__FILE__)); // windows scramble
@@ -44,11 +41,9 @@ class wpPicasa{
 		if ( is_admin() ) {
 			require_once dirname(__FILE__) . '/admin.php';
 			new picasaOptions_Options_Page(__FILE__, $options);
-			
 			add_action( 'wp_ajax_picasa_ajax_import',array('wpPicasa','picasa_ajax_import') );
 			add_action( 'wp_ajax_picasa_ajax_reload_images',array('wpPicasa','picasa_ajax_reload_images') );
 			add_action( 'wp_ajax_picasa_ajax_image_action',array('wpPicasa','picasa_ajax_image_action') );
-			
 			add_action('admin_menu', array('wpPicasa','add_custom_boxes'));
 		}
 		self::load_picasa_javascript();
@@ -65,7 +60,6 @@ class wpPicasa{
 			wp_enqueue_style('picasa_albums_admin_css',plugins_url('picasa').'/admin/style.css');
 			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');
 			wp_enqueue_script('fancybox', plugins_url('picasa') . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
-			
 		}else{
 			wp_enqueue_style('picasa_albums_css',plugins_url('picasa').'/style.css');
 			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');
@@ -114,17 +108,19 @@ class wpPicasa{
 	}
 	function add_custom_boxes(){
 		if(isset($_GET['action'])){
-			add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),'album', 'normal', 'high');
-			add_meta_box( 'picasa-album-images','Album Images',array('wpPicasa','picasa_admin_album_images'),'album', 'normal', 'high');
-			add_meta_box( 'picasa-album-side','Maintenance Functions',array('wpPicasa','picasa_admin_album_import'),'album', 'side', 'low');
+			add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),self::$post_type, 'normal', 'high');
+			add_meta_box( 'picasa-album-images','Album Images',array('wpPicasa','picasa_admin_album_images'),self::$post_type, 'normal', 'high');
+			add_meta_box( 'picasa-album-side','Maintenance Functions',array('wpPicasa','picasa_admin_album_import'),self::$post_type, 'side', 'low');
+			remove_meta_box( 'slugdiv' , self::$post_type , 'normal' );
 		}else{
+			remove_meta_box( 'commentstatusdiv' , self::$post_type , 'normal' );
+			remove_meta_box( 'authordiv' , self::$post_type , 'normal' ); 
+			remove_meta_box( 'submitdiv' , self::$post_type , 'side' );
+			remove_meta_box( 'slugdiv' , self::$post_type , 'normal' );
 			
-			remove_meta_box( 'title' , 'album' , 'normal' );
-			remove_meta_box( 'commentstatusdiv' , 'album' , 'normal' );
-			remove_meta_box( 'authordiv' , 'album' , 'album' ); 
-			remove_meta_box( 'submitdiv' , 'album' , 'side' );
 			
-			
+			add_meta_box( 'picasa-album','Import',array('wpPicasa','picasa_admin_import_album_view'),self::$post_type, 'normal', 'high');
+			add_meta_box( 'picasa-album-side-promo','Picasa Album Pro',array('wpPicasa','picasa_admin_import_album_side'),self::$post_type, 'side', 'high');
 		}
 	}
 	
@@ -152,6 +148,33 @@ class wpPicasa{
 		));
 		*/
 		echo '</div>';
+	}
+	
+	/**
+	 * 
+	 * @return unknown_type
+	 */
+	function picasa_admin_import_album_view(){
+		global $post;
+		$options = get_option(self::$options['key']);
+		echo '<script type="text/javascript">';
+		echo 'jQuery("#titlediv").hide();';
+		echo '</script>';
+		echo '
+			<p>Please note: all new albums will be imported and marked as draft. All existing albums will remain untouched.</p>
+			<input type="text" id="username" size="50" value="'.$options['username'].'" name="username">
+			<input type="button" id="import_albums" class="button" value="Import" name="import_albums" /><span class="loader hide"><i>Loading... Do not reload this page!</i></span>
+			<p>
+				<a href="edit.php?post_type='.self::$post_type.'">View Albums</a>
+			</p>
+			
+			
+		';
+	}
+	function picasa_admin_import_album_side(){
+		echo '
+			<p>Do you need more features?<br /> Check out <a target="blank" href="http://mikhailkozlov.com/picasa_albums_pro/">Picasa Albums Pro</a>.</p>	
+		';
 	}
 	/**
 	 * box html
@@ -240,7 +263,7 @@ class wpPicasa{
 	function picasa_ajax_import() {
 		global $wpdb;
 		$options = get_option(self::$options['key']);
-		// /wp-admin/admin-ajax.php?action=myajax-submit
+		set_time_limit(300);
 		echo 'doing ajax...';
 		// time to curl
 		$xml= new wpPicasaApi($options['username'],array('thumbsize'=>$options['album_thumbsize']));
@@ -298,7 +321,8 @@ class wpPicasa{
 					$q="SELECT post_excerpt, post_content FROM ".$wpdb->posts." WHERE ID=".intval($_REQUEST['post_ID']);
 					$row = $wpdb->get_row($q);
 					if(isset($row->post_content)){
-						$aImages = json_decode($row->post_content,true);
+						self::decode_content($row->post_content);
+						$aImages = $row->post_content;
 					}
 					if($aImages!== false){
 						$aImages = self::sortArrayByArray($aImages,$aOrder,$_REQUEST['id']);
@@ -629,7 +653,7 @@ class wpPicasaApi{
 					'title' =>	(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
 					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
 					'latlong' => '', //
-					'summary' =>addslashes((string) $oAlbum->summarsy), //Some things in Russia make you wonder
+					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
 					'rights' => (string)$oAlbum->rights, //public
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings
@@ -647,7 +671,7 @@ class wpPicasaApi{
 				$aAlbum['thumbnail'] = (Array)$aAlbum['thumbnail'][0];
 				$aAlbum['thumbnail'] = $aAlbum['thumbnail']['@attributes'];
 				$aAlbum['latlong'] = (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'); // 
-				$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
+				$aAlbum['latlong'] = (isset($aAlbum['latlong'][0])) ? explode(' ',(string)$aAlbum['latlong'][0]):array();
 				$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
 				$aAlbum['id'] = (string)$aAlbum['id'][0];
 				$url = parse_url($aAlbum['links']['text/html']);

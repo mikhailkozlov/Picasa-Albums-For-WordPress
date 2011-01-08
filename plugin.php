@@ -266,6 +266,7 @@ class wpPicasa{
 		set_time_limit(300);
 		echo 'doing ajax...';
 		// time to curl
+		$options['username'] = (isset($_GET['user'])) ? trim($_GET['user']):$options['username'];
 		$xml= new wpPicasaApi($options['username'],array('thumbsize'=>$options['album_thumbsize']));
 		$xml->getAlbums();
 		$xml->parseAlbumXml(true);
@@ -274,7 +275,7 @@ class wpPicasa{
 			$albums[$row['post_mime_type']] =$row['ID'];
 		}
 		foreach($xml->getData() as $aData){
-			if(is_array($albums) && array_key_exists($aData['id'],$albums)){
+			if(isset($albums) && is_array($albums) && array_key_exists($aData['id'],$albums)){
 				// update existing album. images will not be updated
 				self::insertAlbums($aData,$albums[$aData['id']]);
 			}else{
@@ -483,7 +484,17 @@ class wpPicasa{
 		$path[$size] .= ($options['album_thumbcrop'] == 'yes')? '-c':''; 
 		return implode('/',$path);
 	}
-
+	/**
+	 * deactivation hook
+	 */
+	function picasa_albums_cleanup(){
+		global $wpdb;
+		// remove posts
+		$q='DELETE FROM '.$wpdb->posts.' WHERE post_type=\''.self::$post_type.'\'';
+		$wpdb->query($q);
+		// remove settings
+		delete_option(self::$options['key']);
+	}
 }
 //register_activation_hook( __FILE__, array('wpPicasa','_activate') );
 
@@ -591,7 +602,7 @@ class wpPicasaApi{
 		if($info['http_code'] == 200) {
 			return true;
 		} elseif ($info['http_code'] == 400) {
-			throw new Exception('Bad request - '.$response);
+			throw new Exception('Bad request - '.$response .' URL: '.$url);
 			return false;
 		} elseif ($info['http_code'] == 401) {
 			throw new Exception('Permission Denied - '.$response);
@@ -653,7 +664,7 @@ class wpPicasaApi{
 					'title' =>	(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
 					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
 					'latlong' => '', //
-					'summary' =>addslashes((string) $oAlbum->summarsy), //Some things in Russia make you wonder
+					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
 					'rights' => (string)$oAlbum->rights, //public
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings
@@ -747,10 +758,9 @@ class wpPicasaApi{
 				if(array_key_exists('georss',$ns)){
 					// lat long as array
 					$aImage['latlong'] = (Array)$oImage->xpath('./georss:where/gml:Point/gml:pos');
-					$aImage['latlong'] = explode(' ',(string)$aImage['latlong'][0]);
+					$aImage['latlong'] = (isset($aImage['latlong']) && isset($aImage['latlong'][0])) ? explode(' ',(string)$aImage['latlong'][0]):array();
 					$aImage['latlong'] = (count($aImage['latlong']) == 1) ? false:$aImage['latlong'];
 				}
-				
 				// flatten right, size, width, height
 				$aImage['size'] = (string)$aImage['size'][0];
 				$aImage['rights'] = (string)$aImage['rights'][0];
@@ -783,4 +793,6 @@ if(!function_exists('flushRules')){
 	   	$wp_rewrite->flush_rules();
 	}
 }
+
+register_deactivation_hook( __FILE__, array('wpPicasa','picasa_albums_cleanup'));
 ?>

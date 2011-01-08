@@ -1,18 +1,15 @@
 <?php
-date_default_timezone_set('America/Los_Angeles');
-/**
- * @package MyPicasaPluginOnline
- */
+
 /*
-Plugin Name: My Picasa WP Plugin
-Plugin URI: http://www.vayama.com/
+Plugin Name: Picasa Albums
+Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 0.0.1
+Version: 1.0.0
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
-License: GPLv2
+License: GPLv3
 */
-
+date_default_timezone_set('America/Los_Angeles');
 
 $picasaOption;
 $path = str_replace('\\','/',dirname(__FILE__)); // windows scramble
@@ -118,17 +115,26 @@ class wpPicasa{
 				
 	}
 	function add_custom_boxes(){
-		add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),'album', 'normal', 'high');
-		add_meta_box( 'picasa-album-images','Album Images',array('wpPicasa','picasa_admin_album_images'),'album', 'normal', 'high');
-		add_meta_box( 'picasa-album-side','Maintenance Functions',array('wpPicasa','picasa_admin_album_import'),'album', 'side', 'low');
+		if(isset($_GET['action'])){
+			add_meta_box( 'picasa-album','Album Details',array('wpPicasa','picasa_admin_album_view'),self::$post_type, 'normal', 'high');
+			add_meta_box( 'picasa-album-images','Album Images',array('wpPicasa','picasa_admin_album_images'),self::$post_type, 'normal', 'high');
+			add_meta_box( 'picasa-album-side','Maintenance Functions',array('wpPicasa','picasa_admin_album_import'),self::$post_type, 'side', 'low');
+			remove_meta_box( 'slugdiv' , self::$post_type , 'normal' );
+		}else{
+			remove_meta_box( 'commentstatusdiv' , self::$post_type , 'normal' );
+			remove_meta_box( 'authordiv' , self::$post_type , 'normal' ); 
+			remove_meta_box( 'submitdiv' , self::$post_type , 'side' );
+			remove_meta_box( 'slugdiv' , self::$post_type , 'normal' );
+			
+			
+			add_meta_box( 'picasa-album','Import',array('wpPicasa','picasa_admin_import_album_view'),self::$post_type, 'normal', 'high');
+			add_meta_box( 'picasa-album-side-promo','Picasa Album Pro',array('wpPicasa','picasa_admin_import_album_side'),self::$post_type, 'side', 'high');
+		}
 	}
 	
 	function picasa_admin_album_import(){
 		global $post;
-		if(!is_array($post->post_excerpt)){
-			$post->post_excerpt =  json_decode(htmlspecialchars_decode($post->post_excerpt),true);
-		}
-		
+		self::decode_content($post->post_excerpt);
 		echo '<div class="submitbox">
 			<p>Will reload all data and erase any changes the you made!</p>
 		';
@@ -151,16 +157,40 @@ class wpPicasa{
 		*/
 		echo '</div>';
 	}
+	
+	/**
+	 * 
+	 * @return unknown_type
+	 */
+	function picasa_admin_import_album_view(){
+		global $post;
+		$options = get_option(self::$options['key']);
+		echo '<script type="text/javascript">';
+		echo 'jQuery("#titlediv").hide();';
+		echo '</script>';
+		echo '
+			<p>Please note: all new albums will be imported and marked as draft. All existing albums will remain untouched.</p>
+			<input type="text" id="username" size="50" value="'.$options['username'].'" name="username">
+			<input type="button" id="import_albums" class="button" value="Import" name="import_albums" /><span class="loader hide"><i>Loading... Do not reload this page!</i></span>
+			<p>
+				<a href="edit.php?post_type='.self::$post_type.'">View Albums</a>
+			</p>
+			
+			
+		';
+	}
+	function picasa_admin_import_album_side(){
+		echo '
+			<p>Do you need more features?<br /> Check out <a target="blank" href="http://mikhailkozlov.com/picasa_albums_pro/">Picasa Albums Pro</a>.</p>	
+		';
+	}
 	/**
 	 * box html
 	 * @return unknown_type
 	 */
 	function picasa_admin_album_view(){
 		global $post;
-
-		if(!is_array($post->post_excerpt)){
-			$post->post_excerpt =  json_decode(htmlspecialchars_decode($post->post_excerpt),true);
-		}
+		self::decode_content($post->post_excerpt);
 		if(is_array($post->post_excerpt)){
 			echo '<script>';
 			echo 'var album = '.json_encode($post->post_excerpt).';';
@@ -176,7 +206,7 @@ class wpPicasa{
 				<ul class="inside">
 					<li>Published: <strong>'.date('D F, jS Y',$post->post_excerpt['published']).'</strong></li>
 					<li>Last updated:  <strong>'.date('D F, jS Y, H:i',$post->post_excerpt['updated']).'</strong></li>
-					<li>Original Title:  <strong>'.$post->post_excerpt['title'].'</strong></li>
+					<li>Original Title:  <strong>'.utf8_decode($post->post_excerpt['title']).'</strong></li>
 					<li>Links: <a href="'.$post->post_excerpt['links']['text/html'].'" >Album on Picasa</a> | <a href="'.$post->post_excerpt['links']['application/atom+xml'].'" >Picasa RSS</a></li>
 				</il>
 				<div class="clear"></div>
@@ -199,16 +229,12 @@ class wpPicasa{
 	function picasa_admin_album_images(){
 		global $post;
 		$options = get_option(self::$options['key']);
-		if(!is_array($post->post_content)){
-			$post->post_content =  json_decode(htmlspecialchars_decode($post->post_content),true);
-		}
+		self::decode_content($post->post_content);
 		echo '<script>';
 		echo 'var images = '.json_encode($post->post_content).';';
 		echo '</script>';
 		echo '<textarea id="content" name="content" style="display:none" class="albumpage">'.json_encode($post->post_content).'</textarea>';
-		
-		echo '<div class="inside">			
-		';		
+		echo '<div class="inside">';		
 		if(count($post->post_content) > 0){
 			echo '<ul class="ui-sortable">';
 			foreach($post->post_content as $i=>$image){
@@ -245,7 +271,7 @@ class wpPicasa{
 	function picasa_ajax_import() {
 		global $wpdb;
 		$options = get_option(self::$options['key']);
-		// /wp-admin/admin-ajax.php?action=myajax-submit
+		set_time_limit(300);
 		echo 'doing ajax...';
 		// time to curl
 		$xml= new wpPicasaApi($options['username'],$_GET['password'],array('thumbsize'=>$options['album_thumbsize']));
@@ -329,7 +355,8 @@ class wpPicasa{
 					$q="SELECT post_excerpt, post_content FROM ".$wpdb->posts." WHERE ID=".intval($_REQUEST['post_ID']);
 					$row = $wpdb->get_row($q);
 					if(isset($row->post_content)){
-						$aImages = json_decode($row->post_content,true);
+						self::decode_content($row->post_content);
+						$aImages = $row->post_content;
 					}
 					if($aImages!== false){
 						$aImages = self::sortArrayByArray($aImages,$aOrder,$_REQUEST['id']);
@@ -426,27 +453,31 @@ class wpPicasa{
 		$options = array_merge($options,get_option($options['key']));
 		if(get_post_type() == self::$post_type){
 			if(is_single()){
-				self::decode_content(&$post->post_content);
+				self::decode_content($post->post_content);
 				$res = '';
-				foreach($post->post_content as $i=>$aImage){
-					if($aImage['show'] == 'yes'){
-						$res .= '
-								<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
-									<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
-						$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
-						$res.='">
-										<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
-						$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
-						$res.='/'.$aImage['file'].'"';
-						$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['thumbnail']['height'].' height="'.$aImage['thumbnail']['height'].'" ':' ';
-						$res.=' class="size-medium" alt="" />
-									</a>
-									<p class="wp-caption-text" style="display:none">';
-						$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
-						$res.='</p>
-								</div>
-						'; 
+				if(!empty($post->post_content) && is_array($post->post_content)){
+					foreach($post->post_content as $i=>$aImage){
+						if($aImage['show'] == 'yes'){
+							$res .= '
+									<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
+										<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
+							$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+							$res.='">
+											<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
+							$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
+							$res.='/'.$aImage['file'].'"';
+							$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['thumbnail']['height'].' height="'.$aImage['thumbnail']['height'].'" ':' ';
+							$res.=' class="size-medium" alt="" />
+										</a>
+										<p class="wp-caption-text" style="display:none">';
+							$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+							$res.='</p>
+									</div>
+							'; 
+						}
 					}
+				}else{
+					$res = 'Error. Please  comeback soon.';
 				}
 				return $res;			
 			}else{
@@ -564,7 +595,7 @@ class wpPicasa{
 	
 	function decode_content(&$c){
 		if(!is_array($c)){
-			$c =  json_decode(htmlspecialchars_decode($c),true);
+			$c =  json_decode(htmlspecialchars_decode(stripcslashes($c)),true);
 		}
 	}
 	function parseThumb($path){
@@ -776,10 +807,10 @@ class wpPicasaApi{
 					'authkey'=>'',
 					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
 					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
-					'title' =>	utf8_encode((string)$oAlbum->title),//2010-09-02 - Russia - Odd Things
+					'title' =>	(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
 					'thumbnail' => (Array)$oAlbum->xpath('./media:group/media:thumbnail'), // 
 					'latlong' => '', //
-					'summary' =>addslashes(utf8_encode((string) $oAlbum->summary)), //Some things in Russia make you wonder
+					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
 					'rights' => (string)$oAlbum->rights, //public
 					'links' => array(
 						'text/html'=>'', //http://picasaweb.google.com/kozlov.m.a/20100902RussiaOddThings
@@ -797,7 +828,7 @@ class wpPicasaApi{
 				$aAlbum['thumbnail'] = (Array)$aAlbum['thumbnail'][0];
 				$aAlbum['thumbnail'] = $aAlbum['thumbnail']['@attributes'];
 				$aAlbum['latlong'] = (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'); // 
-				$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
+				$aAlbum['latlong'] = (isset($aAlbum['latlong'][0])) ? explode(' ',(string)$aAlbum['latlong'][0]):array();
 				$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
 				$aAlbum['id'] = (string)$aAlbum['id'][0];
 				$url = parse_url($aAlbum['links']['text/html']);
@@ -829,20 +860,21 @@ class wpPicasaApi{
 		$xml->registerXPathNamespace('exif', 'http://schemas.google.com/photos/exif/2007'); // define namespace media
 		if(count($xml->entry) > 0){
 			$c=0;
-			foreach($xml->entry as $i=>$oAlbum){
+			foreach($xml->entry as $i=>$oImage){
 				$c++;
-				$aAlbum = array(
-					'id'=> (Array)$oAlbum->xpath('./gphoto:id'), //5516889074505060529
-					'published'=>strtotime($oAlbum->published), // strtotime(2010-09-11T04:58:08.000Z);
-					'updated'=>strtotime($oAlbum->updated),// // strtotime(2010-09-11T04:58:08.000Z);
-					'file' =>(string)$oAlbum->title,//2010-09-02 - Russia - Odd Things
-					'fullpath' =>$oAlbum->content,//2010-09-02 - Russia - Odd Things
-				   	'width'=>(Array)$oAlbum->xpath('./gphoto:width'), // width of the original in px
-				    'height'=>(Array)$oAlbum->xpath('./gphoto:height'), // height of the original in px 
-				    'size'=>(Array)$oAlbum->xpath('./gphoto:size'), // file size of the original in kb				
+				$aImage = array(
+					'id'=> (Array)$oImage->xpath('./gphoto:id'), //5516889074505060529
+					'published'=>strtotime($oImage->published), // strtotime(2010-09-11T04:58:08.000Z);
+					'updated'=>strtotime($oImage->updated),// // strtotime(2010-09-11T04:58:08.000Z);
+					'file' =>(string)$oImage->title,//2010-09-02 - Russia - Odd Things
+					'fullpath' =>$oImage->content,//2010-09-02 - Russia - Odd Things
+				   	'width'=>(Array)$oImage->xpath('./gphoto:width'), // width of the original in px
+				    'height'=>(Array)$oImage->xpath('./gphoto:height'), // height of the original in px 
+				    'size'=>(Array)$oImage->xpath('./gphoto:size'), // file size of the original in kb				
 					'latlong' => '', //
-					'summary' =>addslashes((string) $oAlbum->summary), //Some things in Russia make you wonder
-					'rights' => (Array)$oAlbum->xpath('./gphoto:access'), //public
+					'thumbnail' => (Array)$oImage->xpath('./media:group/media:thumbnail'), //
+					'summary' =>addslashes((string) $oImage->summary), //Some things in Russia make you wonder
+					'rights' => (Array)$oImage->xpath('./gphoto:access'), //public
 					'pos'=>$c,
 					'show'=>'yes',
 					'links' => array(
@@ -850,40 +882,42 @@ class wpPicasaApi{
 						'application/atom+xml'=>'' //http://picasaweb.google.com/data/feed/api/user/kozlov.m.a/albumid/5516889074505060529
 					)
 				);
-				foreach($oAlbum->link as $oLink){
+				
+				foreach($oImage->link as $oLink){
 					$a = (Array)$oLink->attributes();
 					$a = $a['@attributes'];
 					if($a['rel'] == 'alternate' || $a['rel'] == 'self'){
-						$aAlbum['links'][$a['type']] = $a['href'];
+						$aImage['links'][$a['type']] = $a['href'];
 					}
 				}
 				unset($oLink);
-				$tmp = explode('/',$aAlbum['thumbnail']['url']);
+				$aImage['thumbnail'] = (Array)$aImage['thumbnail'][0];
+				$aImage['thumbnail'] = $aImage['thumbnail']['@attributes'];
 				// some trickery to get image path
-				$aAlbum['fullpath'] = (Array)$aAlbum['fullpath'];
-				$aAlbum['fullpath'] =str_replace($aAlbum['file'],'',$aAlbum['fullpath']['@attributes']['src']);
+				$aImage['fullpath'] = (Array)$aImage['fullpath'];
+				$aImage['fullpath'] =str_replace($aImage['file'],'',$aImage['fullpath']['@attributes']['src']);
 				// flatten id
-				$aAlbum['id'] = (string)$aAlbum['id'][0];
+				$aImage['id'] = (string)$aImage['id'][0];
 				
 				// private albums do not seem to have georss.
 				$ns = $xml->getDocNamespaces();
 				if(array_key_exists('georss',$ns)){
 					// lat long as array
-					$aAlbum['latlong'] = (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos');
-					$aAlbum['latlong'] = explode(' ',(string)$aAlbum['latlong'][0]);
-					$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
+					$aImage['latlong'] = (Array)$oImage->xpath('./georss:where/gml:Point/gml:pos');
+					$aImage['latlong'] = explode(' ',(string)$aImage['latlong'][0]);
+					$aImage['latlong'] = (count($aImage['latlong']) == 1) ? false:$aImage['latlong'];
 				}
 				
 				// flatten right, size, width, height
-				$aAlbum['size'] = (string)$aAlbum['size'][0];
-				$aAlbum['rights'] = (string)$aAlbum['rights'][0];
-				$aAlbum['height'] = (string)$aAlbum['height'][0];
-				$aAlbum['width'] = (string)$aAlbum['width'][0];
+				$aImage['size'] = (string)$aImage['size'][0];
+				$aImage['rights'] = (string)$aImage['rights'][0];
+				$aImage['height'] = (string)$aImage['height'][0];
+				$aImage['width'] = (string)$aImage['width'][0];
 				unset($tmp);
-				$this->data[]=$aAlbum;
-				unset($aAlbum);				
+				$this->data[]=$aImage;
+				unset($aImage);				
 			}
-			unset($oAlbum);
+			unset($oImage);
 		}
 		unset($xml);
 		if($killxml){

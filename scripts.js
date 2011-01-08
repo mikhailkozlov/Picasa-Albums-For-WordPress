@@ -1,7 +1,8 @@
 var $j =jQuery.noConflict();
 $j(document).ready(function(){
 	$j("a.fancybox").fancybox();
-	$j(".scrollable").scrollable();
+	$j(".picasa_carousel").jcarousel();
+
 });
 
 

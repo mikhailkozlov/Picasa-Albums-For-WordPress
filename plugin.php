@@ -263,7 +263,7 @@ class wpPicasa{
 	function picasa_ajax_import() {
 		global $wpdb;
 		$options = get_option(self::$options['key']);
-		set_time_limit(3000);
+		set_time_limit(300);
 		echo 'doing ajax...';
 		// time to curl
 		$options['username'] = (isset($_GET['user'])) ? trim($_GET['user']):$options['username'];

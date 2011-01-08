@@ -15,13 +15,14 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		return $options;
 	}
 	function page_content() {
+		$new = (empty($this->options->username)) ? ' ref="new"':' ref="saved"';
 		$rows = array(
 			array(
 				'title' => __('Picasa User Name', $this->textdomain),
 				'type' => 'text',
 				'name' => 'username',
-				'extra' => 'size="50"',
-				'desc' => '<br />Picasa\'s API does not need password to access your public RSS feed.',
+				'extra' => 'size="50" '.$new,
+				'desc' => '<span style="color:red; display:none;">Save options before importing albums!</span><br />Picasa\'s API does not need password to access your public RSS feed.',
 			),
 		);
 		$out =
@@ -37,7 +38,7 @@ class picasaOptions_Options_Page extends scbAdminPage {
 				'id'=>'import_albums',
 				'value'=>'Import',
 				'extra'=>'class="button"',
-				'desc' => '<span class="loader hide"><i>Loading...</i></span></label><label>',
+				'desc' => '<span class="loader hide"><i>Loading</i></span></label><label>',
 			)
 		);
 		$out.=html('h3', __('Import Data', $this->textdomain));

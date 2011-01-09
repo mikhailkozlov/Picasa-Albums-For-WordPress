@@ -11,7 +11,7 @@
 			ed.addButton('wppicasagallery', {
 				title : 'Select PicasaWeb Album',
 				cmd : 'mcePicasa',
-				image : url + '/img/ice--plus.png'
+				image : url + '/img/picasa_btn.gif'
 			});
 			ed.onNodeChange.add(function(ed, cm, n) {
 				cm.setActive('wppicasagallery', n.nodeName == 'IMG');

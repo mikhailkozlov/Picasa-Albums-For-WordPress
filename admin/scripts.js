@@ -2,7 +2,24 @@ var albumPage = false;
 var newName = false;
 var $j =jQuery.noConflict();
 $j(document).ready(function(){
+	/*post page */
+	$j("input.picasa").live("click",function(){
+		var t =  jQuery(this);
+		var d = jQuery.parseJSON(t.attr("data"));
+		var frm = $j("#album_"+d.id).find("form");
+		var q = "[PicasaAlbum id="+d.id+"&scroll="+frm.find("select#scroll").val()+"&limit="+frm.find("input#limit").val()+"&link_to_album="+frm.find("#link_to_album").val()+"&fancybox="+frm.find("#fancybox").val()+"]";
+		send_to_editor(q);
+	});
+	
+	
 	/************ option page function **************/
+	$j("#private_import_albums").attr('checked','');
+	$j("#private_import_albums").change(function(){
+		$j("#gpass_holder").toggleClass('hide');
+		if($j("#gpass_holder").hasClass('hide')){
+			$j("#gpass_holder input").val('');
+		}
+	});	
 	// little validation
 	if($j("input#username").attr('ref') == 'new'){
 		newName = true;

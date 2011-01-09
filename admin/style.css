@@ -6,6 +6,8 @@ span.loader{ background:url(../images/loading.gif) right no-repeat; padding-righ
 .hide{
 	display:none;
 }
+#adminmenu #menu-posts-album.menu-icon-post div.wp-menu-image{background:url("../images/picasa_post_icon.png") no-repeat scroll 0px -28px transparent;}
+#adminmenu #menu-posts-album.menu-icon-post:hover div.wp-menu-image{background:url("../images/picasa_post_icon.png") no-repeat scroll 0px 0px transparent;}
 #picasa-album-images div.ui-sortable{
 	display:block;
 	height:100%;
@@ -69,3 +71,13 @@ span.loader{ background:url(../images/loading.gif) right no-repeat; padding-righ
 .icon.cover_image{
 	background:url(../images/image-sunset.png) left no-repeat scroll;
 }
+
+/* WYSIWYG Edit */
+.popup_album_settings{ height:68px; margin:0 0 5px; padding:3px; width:630px;}
+.popup_album_settings:hover{ background-color:#EDEDED;}
+.popup_album_settings h3{ margin:0 0 5px 0;}
+.popup_album_settings img{float:left; margin:0 10px 0 0;}
+.popup_album_settings .button {float:right;}
+.popup_album_settings span{cursor:help;}
+.popup_album_settings div.summary{float:left; width:550px}
+#TB_window{overflow:hidden;}

@@ -566,7 +566,6 @@ class wpPicasa{
 							$options=self::$options;
 							$options = array_merge($options,get_option($options['key']));
 							// get data from JSON
-							
 							$images = array();
 							self::decode_content($postCache[$args['id']]['post_content']);
 							$images = $postCache[$args['id']]['post_content'];

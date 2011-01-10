@@ -14,6 +14,8 @@ date_default_timezone_set('America/Los_Angeles');
 $picasaOption;
 $path = str_replace('\\','/',dirname(__FILE__)); // windows scramble
 require $path .'/scb/load.php';
+
+// init picasa class
 scb_init(array('wpPicasa','init'));
 
 class wpPicasa{
@@ -54,18 +56,20 @@ class wpPicasa{
 		add_option('picasaOptions_options', serialize (self::$options),'','yes');
 	}
 	function load_picasa_javascript(){
+		$path = basename(dirname(__FILE__));
 		if ( is_admin() ) {
 			wp_enqueue_script('json', '/wp-admin/load-scripts.php?c=1&load=json2', array('jquery'), '2', true);
-			wp_enqueue_script('picasa_albums_admin', plugins_url('picasa'). '/admin/scripts.js', array('jquery'), '1.0', true);
-			wp_enqueue_style('picasa_albums_admin_css',plugins_url('picasa').'/admin/style.css');
-			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');
-			wp_enqueue_script('fancybox', plugins_url('picasa') . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
-		}else{
-			wp_enqueue_style('picasa_albums_css',plugins_url('picasa').'/style.css');
-			wp_enqueue_style('fancybox_css',plugins_url('picasa').'/fancybox/jquery.fancybox.css');
-			wp_enqueue_script('fancybox', plugins_url('picasa') . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
+			wp_enqueue_script('picasa_albums_admin', plugins_url($path). '/admin/scripts.js', array('jquery'), '1.0', true);
+			wp_enqueue_style('picasa_albums_admin_css',plugins_url($path).'/admin/style.css');
+			wp_enqueue_style('fancybox_css',plugins_url($path).'/fancybox/jquery.fancybox.css');
+			wp_enqueue_script('fancybox', plugins_url($path) . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
 			
-			wp_enqueue_script('picasa_albums', plugins_url('picasa') . '/scripts.js', array('jquery'), '1.1', true);
+		}else{
+			wp_enqueue_style('picasa_albums_css',plugins_url($path).'/style.css');
+			wp_enqueue_style('fancybox_css',plugins_url($path).'/fancybox/jquery.fancybox.css');
+			wp_enqueue_script('fancybox', plugins_url($path) . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
+			
+			wp_enqueue_script('picasa_albums', plugins_url($path) . '/scripts.js', array('jquery'), '1.1', true);
 		}	
 	}
 	

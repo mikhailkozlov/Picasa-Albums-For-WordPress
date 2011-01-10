@@ -6,6 +6,8 @@ span.loader{ background:url(../images/loading.gif) right no-repeat; padding-righ
 .hide{
 	display:none;
 }
+#adminmenu #menu-posts-album.menu-icon-post div.wp-menu-image{background:url("../images/picasa_post_icon.png") no-repeat scroll 0px -28px transparent;}
+#adminmenu #menu-posts-album.menu-icon-post:hover div.wp-menu-image{background:url("../images/picasa_post_icon.png") no-repeat scroll 0px 0px transparent;}
 #picasa-album-images div.ui-sortable{
 	display:block;
 	height:100%;

@@ -810,6 +810,10 @@ class wpPicasaApi{
 		if($authkey !=null && !empty($authkey)){
 			$url.='&authkey='.$authkey;
 		}
+		if(!empty($this->_authCode)){
+			$header[]="Authorization: GoogleLogin auth=".$this->_authCode;
+		}
+		
 		$ch = curl_init($url);
 		return $this->_getXml($url,$header);
 	}

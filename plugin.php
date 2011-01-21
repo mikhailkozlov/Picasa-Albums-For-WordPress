@@ -4,7 +4,7 @@
 Plugin Name: Picasa Albums
 Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 1.0.2
+Version: 1.0.3
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
 License: GPLv3
@@ -402,6 +402,8 @@ class wpPicasa{
 	function wp_insertPicasaRules($rules){
 		$newrules = array();
 		$newrules['(album)/(\d*)$'] = 'index.php?post_type=$matches[1]&post_name=$matches[2]';
+		// issie #2 fix
+		$newrules['(album)/page/?([0-9]{1,})/?$'] = 'index.php?post_type=$matches[1]&paged=$matches[2]';		
 		$newrules['(album)$'] = 'index.php?post_type=$matches[1]';
 		return $newrules + $rules;
 	}

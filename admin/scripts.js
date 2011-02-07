@@ -23,7 +23,7 @@ $j(document).ready(function(){
 		if(!newName){
 			var l = $j(this).next();
 			l.show();
-			$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_import',{'user':$j('input#username').val(),'password':$j("#gpassword").val()},function(){
+			$j.get('admin-ajax.php?action=picasa_ajax_import',{'user':$j('input#username').val(),'password':$j("#gpassword").val()},function(){
 				l.hide();
 			});
 		}else{
@@ -46,7 +46,7 @@ $j(document).ready(function(){
 		var l = $j(this);
 		var t = $j(this).val();
 		l.val("Loading...");
-		$j.get("/wp-admin/admin-ajax.php?action=picasa_ajax_reload_images",{"id":l.attr("data"),"authkey":l.attr("authkey"),"post_ID":$j("#post_ID").val()},function(){
+		$j.get("admin-ajax.php?action=picasa_ajax_reload_images",{"id":l.attr("data"),"authkey":l.attr("authkey"),"post_ID":$j("#post_ID").val()},function(){
 			l.val(t);
 			window.location.href=window.location.href
 		});
@@ -109,7 +109,7 @@ $j(document).ready(function(){
 			for(i=0; i<images.length; i++){
 				post += '&id['+images[i].id+']='+images[i].show;
 			}
-			$j.get('/wp-admin/admin-ajax.php?action=picasa_ajax_image_action',post,function(r){
+			$j.get('admin-ajax.php?action=picasa_ajax_image_action',post,function(r){
 				// get responce and update textarea
 				$j("textarea#content").val(r);
 				btn.click();

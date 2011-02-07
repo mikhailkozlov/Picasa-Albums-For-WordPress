@@ -4,7 +4,7 @@
 Plugin Name: Picasa Albums
 Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 1.0.3
+Version: 1.0.4
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
 License: GPLv3
@@ -687,7 +687,7 @@ class wpPicasaApi{
 				unset($oLink);
 				$aAlbum['thumbnail'] = (Array)$aAlbum['thumbnail'][0];
 				$aAlbum['thumbnail'] = $aAlbum['thumbnail']['@attributes'];
-				$aAlbum['latlong'] = (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'); // 
+				$aAlbum['latlong'] = ( $oAlbum->xpath('./georss:where') !== false && $oAlbum->xpath('./georss:where/gml:Point') !== false ) ? (Array)$oAlbum->xpath('./georss:where/gml:Point/gml:pos'):array(); // 
 				$aAlbum['latlong'] = (isset($aAlbum['latlong'][0])) ? explode(' ',(string)$aAlbum['latlong'][0]):array();
 				$aAlbum['latlong'] = (count($aAlbum['latlong']) == 1) ? false:$aAlbum['latlong'];
 				$aAlbum['id'] = (string)$aAlbum['id'][0];

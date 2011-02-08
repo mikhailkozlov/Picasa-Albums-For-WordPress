@@ -56,6 +56,11 @@ This plugin is distributed under GPL. You can and you should:
 == Change Log ==
 
 v. 1.0.4
+
 	* /admin/scripts.js - relative path for ajax requests per issue #5 in github. Thanks stephanvierkant. 
 	* /plugin.php - simpleXml warning path not found possible fix. Thanks stephanvierkant.
-	
+
+v. 1.0.5
+
+	* removed album update. now albums only imported. all updates are done manually. Closes #7
+	* added the_excerpt() filter for better compatibility with custom themes	

@@ -4,7 +4,7 @@
 Plugin Name: Picasa Albums
 Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 1.0.4
+Version: 1.0.5
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
 License: GPLv3
@@ -108,7 +108,10 @@ class wpPicasa{
 		register_taxonomy_for_object_type('album', 'album');
 
 		add_filter('the_content',array('wpPicasa','picasa_album_filter'));
-				
+		// v 1.0.5
+		// some themes call the_exerpt();
+		add_filter('the_excerpt',array('wpPicasa','picasa_album_filter'));
+		
 	}
 	function add_custom_boxes(){
 		if(isset($_GET['action'])){
@@ -281,7 +284,9 @@ class wpPicasa{
 		foreach($xml->getData() as $aData){
 			if(isset($albums) && is_array($albums) && array_key_exists($aData['id'],$albums)){
 				// update existing album. images will not be updated
-				self::insertAlbums($aData,$albums[$aData['id']]);
+				// v 1.0.5
+				// self::insertAlbums($aData,$albums[$aData['id']]);
+				// we used to update here, but people did not want this.
 			}else{
 				//new album. images will BE imported
 				$post_id = self::insertAlbums($aData,0);

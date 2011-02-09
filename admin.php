@@ -95,7 +95,7 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		$out.=html('p', __('Define how your gallery posts will look.', $this->textdomain));
 		$out.=$this->table($rows);
 
-		$out.=html('p', __('Do you need more features? Check out <a href="mikhailkozlov.com/picasa_albums_pro" target="blank">Picasa Albums Pro</a>.', $this->textdomain));
+		$out.=html('p', __('Do you need more features? Check out <a href="http://mikhailkozlov.com/category/projects/picasa-albums/" target="blank">Picasa Albums Pro</a>.', $this->textdomain));
 		echo $this->form_wrap($out);
 	}
 }

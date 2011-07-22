@@ -46,7 +46,7 @@ Visit my blog for more great ideas on how you can take advantage of Google's fre
 
 == Licence ==
 
-This plugin is distributed under GPL. You can and you should:
+This plugin is distributed under GPLv2 (or later). You can and you should:
 
     * use the software for any purpose,
     * change the software to suit your needs,
@@ -66,4 +66,4 @@ v. 1.0.5
 	* added the_excerpt() filter for better compatibility with custom themes	
 
 v. 1.0.6
-	
+	* GPLv2 (or later) license 

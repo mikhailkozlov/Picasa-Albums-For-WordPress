@@ -7,7 +7,7 @@ Description: Creates custom post type and displays picasa albums
 Version: 1.0.6
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
-License: GPLv3
+License: GPLv2 (or later) 
 */
 date_default_timezone_set('America/Los_Angeles');
 

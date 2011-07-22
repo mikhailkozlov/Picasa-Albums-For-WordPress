@@ -3,7 +3,7 @@ Contributors: MikhaikKozlov
 Donate link: http://mikhailkozlov.com/
 Tags: picasaweb, image hosting, picasa, albums, custom post type, CND, fancybox
 Requires at least: 3.0.0
-Tested up to: 3.3
+Tested up to: 3.2.1
 
 Picasa Albums For WordPress helps to easily import, display and manage your public Picasa Web Albums right in your WordPress site.
 
@@ -64,3 +64,6 @@ v. 1.0.5
 
 	* removed album update. now albums only imported. all updates are done manually. Closes #7
 	* added the_excerpt() filter for better compatibility with custom themes	
+
+v. 1.0.6
+	

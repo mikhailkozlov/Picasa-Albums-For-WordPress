@@ -4,7 +4,7 @@
 Plugin Name: Picasa Albums
 Plugin URI: http://mikhailkozlov.com/picasa-albums-for-wordpress/
 Description: Creates custom post type and displays picasa albums
-Version: 1.0.5
+Version: 1.0.6
 Author: Mikhail Kozlov	
 Author URI: http://mikhailkozlov.com
 License: GPLv3
@@ -58,18 +58,18 @@ class wpPicasa{
 	function load_picasa_javascript(){
 		$path = basename(dirname(__FILE__));
 		if ( is_admin() ) {
-			wp_enqueue_script('json', '/wp-admin/load-scripts.php?c=1&load=json2', array('jquery'), '2', true);
-			wp_enqueue_script('picasa_albums_admin', plugins_url($path). '/admin/scripts.js', array('jquery'), '1.0', true);
+			wp_enqueue_script('json', '/wp-admin/load-scripts.php?c=1&load=json2', array(), '', true);
+			wp_enqueue_script('picasa_albums_admin', plugins_url($path). '/admin/scripts.js', array(), '', true);
 			wp_enqueue_style('picasa_albums_admin_css',plugins_url($path).'/admin/style.css');
-			wp_enqueue_style('fancybox_css',plugins_url($path).'/fancybox/jquery.fancybox.css');
-			wp_enqueue_script('fancybox', plugins_url($path) . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
-			
+			wp_enqueue_style('fancybox_css',plugins_url($path).'/fancybox/jquery.fancybox-1.3.4.css');
+			wp_enqueue_script('fancybox', plugins_url($path) . '/fancybox/jquery.fancybox-custom.js', array(), '', true);
 		}else{
+			wp_enqueue_script('jquery');
 			wp_enqueue_style('picasa_albums_css',plugins_url($path).'/style.css');
-			wp_enqueue_style('fancybox_css',plugins_url($path).'/fancybox/jquery.fancybox.css');
-			wp_enqueue_script('fancybox', plugins_url($path) . '/fancybox/jquery.fancybox.js', array('jquery'), '1.3.1', true);
+			wp_enqueue_style('fancybox_css',plugins_url($path).'/fancybox/jquery.fancybox-1.3.4.css');
+			wp_enqueue_script('fancybox', plugins_url($path) . '/fancybox/jquery.fancybox-custom.js', array(), '', true);
 			
-			wp_enqueue_script('picasa_albums', plugins_url($path) . '/scripts.js', array('jquery'), '1.1', true);
+			wp_enqueue_script('picasa_albums', plugins_url($path) . '/scripts.js', array(), '', true);
 		}	
 	}
 	
@@ -438,13 +438,13 @@ class wpPicasa{
 						if($aImage['show'] == 'yes'){
 							$res .= '
 									<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
-										<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" rel="'.$post->post_name.' nofollow" class="fancybox" title="';
+										<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" data-rel="'.$post->post_name.'" rel="nofollow" class="fancybox" title="';
 							$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
 							$res.='">
 											<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
 							$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
 							$res.='/'.$aImage['file'].'"';
-							$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['thumbnail']['height'].'" height="'.$aImage['thumbnail']['height'].'" ':' ';
+							$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['image_thumbsize'].'" height="'.$aImage['image_thumbsize'].'" ':' ';
 							$res.=' class="size-medium" alt="" />
 										</a>
 										<p class="wp-caption-text" style="display:none">';

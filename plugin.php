@@ -21,7 +21,7 @@ scb_init(array('wpPicasa','init'));
 class wpPicasa{
 	static $post_type='album';
 	static $options=array(
-				'v'=>'1.0',
+				'v'=>'1.0.6',
 				'key'=>'picasaOptions_options',
 				'username' => '',
 				'album_thumbsize'=>160,
@@ -68,7 +68,6 @@ class wpPicasa{
 			wp_enqueue_style('picasa_albums_css',plugins_url($path).'/style.css');
 			wp_enqueue_style('fancybox_css',plugins_url($path).'/fancybox/jquery.fancybox-1.3.4.css');
 			wp_enqueue_script('fancybox', plugins_url($path) . '/fancybox/jquery.fancybox-custom.js', array(), '', true);
-			
 			wp_enqueue_script('picasa_albums', plugins_url($path) . '/scripts.js', array(), '', true);
 		}	
 	}
@@ -432,48 +431,63 @@ class wpPicasa{
 		if(get_post_type() == self::$post_type){
 			if(is_single()){
 				self::decode_content($post->post_content);
-				$res = '';
-				if(!empty($post->post_content) && is_array($post->post_content)){
-					foreach($post->post_content as $i=>$aImage){
-						if($aImage['show'] == 'yes'){
-							$res .= '
-									<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
-										<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" data-rel="'.$post->post_name.'" rel="nofollow" class="fancybox" title="';
-							$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
-							$res.='">
-											<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
-							$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
-							$res.='/'.$aImage['file'].'"';
-							$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['image_thumbsize'].'" height="'.$aImage['image_thumbsize'].'" ':' ';
-							$res.=' class="size-medium" alt="" />
-										</a>
-										<p class="wp-caption-text" style="display:none">';
-							$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
-							$res.='</p>
-									</div>
-							'; 
+				// v.1.0.6 - addign hooks to overwrite default style
+				if( function_exists( wp_picasa_single_view_filter) ){
+					$res = wp_picasa_single_view_filter($post,$options);
+				}
+				else
+				{
+					$res = '';
+					if(!empty($post->post_content) && is_array($post->post_content)){
+						foreach($post->post_content as $i=>$aImage){
+							if($aImage['show'] == 'yes'){
+								$res .= '
+										<div style="width: '.($options['image_thumbsize']+10).'px;" class="wp-caption alignleft '.$options['image_class'].'">
+											<a href="'.$aImage['fullpath'].'s'.$options['image_maxsize'].'/'.$aImage['file'].'" data-rel="'.$post->post_name.'" rel="nofollow" class="fancybox" title="';
+								$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+								$res.='">
+												<img src="'.$aImage['fullpath'].'s'.intval($options['image_thumbsize']);
+								$res.=($options['image_thumbcrop'] == 'yes') ? '-c':'';
+								$res.='/'.$aImage['file'].'"';
+								$res .= ($options['image_thumbcrop'] == 'yes' && isset($aImage['thumbnail']) ) ? ' width="'.$aImage['image_thumbsize'].'" height="'.$aImage['image_thumbsize'].'" ':' ';
+								$res.=' class="size-medium" alt="" />
+											</a>
+											<p class="wp-caption-text" style="display:none">';
+								$res.=(!empty($aImage['summary'])) ? $aImage['summary']:$aImage['file'];
+								$res.='</p>
+										</div>
+								'; 
+							}
 						}
+					}else{
+						$res = 'Error. Please  comeback soon.';
 					}
-				}else{
-					$res = 'Error. Please  comeback soon.';
 				}
 				return $res;			
 			}else{
 				self::decode_content(&$post->post_excerpt);
-				$res = '
-					<div>
-						<div style="" class="wp-caption alignleft">
-							<a href="'.get_permalink().'">
-								<img class="size-medium" title="'.$post->post_excerpt['title'].'" src="'.self::parseThumb($post->post_excerpt['thumbnail']['url']).'" alt=""';
-				$res .= ($options['album_thumbcrop'] == 'yes') ? ' width="'.$post->post_excerpt['thumbnail']['height'].' height="'.$post->post_excerpt['thumbnail']['height'].'" ':' '; 
-				//			<img height="'.$post->post_excerpt['thumbnail']['height'].'" width="'.$post->post_excerpt['thumbnail']['width'].'" class="size-medium" title="'.$post->post_excerpt['title'].'" alt="" src="'.$post->post_excerpt['thumbnail']['url'].'" />
-				$res .= ' /></a>
-							<p class="wp-caption-text" style="display:none">'.$post->post_excerpt['title'].'</p>
+				// v.1.0.6 - addign hooks to overwrite default style
+				if( function_exists( wp_picasa_list_view_filter) ){
+					$res = wp_picasa_list_view_filter($post,$options);
+				}
+				else
+				{
+
+					$res = '
+						<div>
+							<div style="" class="wp-caption alignleft">
+								<a href="'.get_permalink().'">
+									<img class="size-medium" title="'.$post->post_excerpt['title'].'" src="'.self::parseThumb($post->post_excerpt['thumbnail']['url']).'" alt=""';
+					$res .= ($options['album_thumbcrop'] == 'yes') ? ' width="'.$post->post_excerpt['thumbnail']['height'].' height="'.$post->post_excerpt['thumbnail']['height'].'" ':' '; 
+					//			<img height="'.$post->post_excerpt['thumbnail']['height'].'" width="'.$post->post_excerpt['thumbnail']['width'].'" class="size-medium" title="'.$post->post_excerpt['title'].'" alt="" src="'.$post->post_excerpt['thumbnail']['url'].'" />
+					$res .= ' /></a>
+								<p class="wp-caption-text" style="display:none">'.$post->post_excerpt['title'].'</p>
+							</div>
+							'.$post->post_excerpt['summary'].'
+							<div style="clear:both"></div>
 						</div>
-						'.$post->post_excerpt['summary'].'
-						<div style="clear:both"></div>
-					</div>
-				'; 
+					';
+				} 
 				return $res;			
 			}
 		}else{

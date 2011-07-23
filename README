@@ -66,4 +66,8 @@ v. 1.0.5
 	* added the_excerpt() filter for better compatibility with custom themes	
 
 v. 1.0.6
-	* GPLv2 (or later) license 
+	* GPLv2 (or later) license
+	* Updated Fancybox to the latest code. Added jQuery to the list of libs re... 
+	* Custom url for picasa albums 
+	* New hooks to overwrite defualt layout without changing plagin 
+ 

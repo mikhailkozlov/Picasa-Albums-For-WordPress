@@ -33,7 +33,8 @@ class wpPicasa{
 				'image_class'=>'picasa_image',
 				'use_lightbox'=>true,
 				'embed_image_thumbsize'=>128,
-				'embed_image_maxsize'=>800
+				'embed_image_maxsize'=>800,
+				'gallery_path' => 'album',
 				
 	);
 	function init($options=array()) {
@@ -92,7 +93,7 @@ class wpPicasa{
 		);
 		$supports = array('title','author','comments');
 		$args = array(
-			'rewrite' =>array('slug'=>'album'),
+			'rewrite' =>array('slug'=>self::$post_type),
 			'labels' => $labels,
 			'public' => true,
 			'show_ui' => true,
@@ -103,6 +104,13 @@ class wpPicasa{
 			'menu_position'=>20,
 			'supports' => $supports
 		);
+		// v.1.0.6 - rewrite if we have too
+		$options = get_option(self::$options['key']);
+		if(is_array($options) && array_key_exists('gallery_path', $options))
+		{
+			$args['rewrite'] = array('slug'=>$options['gallery_path']);
+		}
+		
 		register_post_type( 'album',$args);
 		register_taxonomy_for_object_type('album', 'album');
 
@@ -405,10 +413,21 @@ class wpPicasa{
 	// Adding a new rule
 	function wp_insertPicasaRules($rules){
 		$newrules = array();
-		$newrules['(album)/(\d*)$'] = 'index.php?post_type=$matches[1]&post_name=$matches[2]';
-		// issie #2 fix
-		$newrules['(album)/page/?([0-9]{1,})/?$'] = 'index.php?post_type=$matches[1]&paged=$matches[2]';		
-		$newrules['(album)$'] = 'index.php?post_type=$matches[1]';
+		// v.1.0.6 - rewrite if we have too
+		$options = get_option(self::$options['key']);
+		if(is_array($options) && array_key_exists('gallery_path', $options))
+		{
+			$path = $options['gallery_path'];
+			$newrules['('.$path.')/(\d*)$'] = 'index.php?post_type='.self::$post_type.'&post_name=$matches[2]';
+			// issie #2 fix
+			$newrules['('.$path.')/page/?([0-9]{1,})/?$'] = 'index.php?post_type='.self::$post_type.'&paged=$matches[2]';		
+			$newrules['('.$path.')$'] = 'index.php?post_type='.self::$post_type;
+		}else{
+			$newrules['(album)/(\d*)$'] = 'index.php?post_type=$matches[1]&post_name=$matches[2]';
+			// issie #2 fix
+			$newrules['(album)/page/?([0-9]{1,})/?$'] = 'index.php?post_type=$matches[1]&paged=$matches[2]';		
+			$newrules['(album)$'] = 'index.php?post_type=$matches[1]';
+		}
 		return $newrules + $rules;
 	}
 	

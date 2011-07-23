@@ -95,6 +95,26 @@ class picasaOptions_Options_Page extends scbAdminPage {
 		$out.=html('p', __('Define how your gallery posts will look.', $this->textdomain));
 		$out.=$this->table($rows);
 
+		// v.1.0.6
+		$out.=html('h3', __('Url Settings', $this->textdomain));
+		if ( get_option('permalink_structure') != '' ) 
+		{
+			$rows=array(
+				array(
+					'title' => __('Gallery pretty url', $this->textdomain),
+					'type' => 'text',
+					'name' => 'gallery_path',
+					'extra'=>'class="small-text" ',
+					'desc' => '<div>Please make sure to update link to albums in blog\'s menus and all other links pointing to picasa albums.</div>'
+				)
+			);
+			$out.=html('Customize blog\'s url structure', __('', $this->textdomain));	
+		}else{
+			$out.=html('span', __('If you would like to customize path to your albums <a href="options-permalink.php">permalinks</a> must be enabled!', $this->textdomain));
+			$rows=array();
+		}
+		$out.=$this->table($rows);
+
 		$out.=html('p', __('Do you need more features? Check out <a href="http://mikhailkozlov.com/category/projects/picasa-albums/" target="blank">Picasa Albums Pro</a>.', $this->textdomain));
 		echo $this->form_wrap($out);
 	}

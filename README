@@ -67,7 +67,8 @@ v. 1.0.5
 
 v. 1.0.6
 	* GPLv2 (or later) license
-	* Updated Fancybox to the latest code. Added jQuery to the list of libs re... 
+	* Updated Fancybox to the latest code. Added jQuery to the list of libs required during init
+	* Updated image thumbnails to work as expected 
 	* Custom url for picasa albums 
 	* New hooks to overwrite defualt layout without changing plagin 
  
